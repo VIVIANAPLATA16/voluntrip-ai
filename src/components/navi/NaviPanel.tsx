@@ -6,12 +6,9 @@ import { Button } from "@/components/ui/Button";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useAppStore } from "@/store/appStore";
 import { t, type TranslationKey } from "@/lib/i18n/dictionaries";
-import { mockConceptLabel } from "@/lib/i18n/labels";
 import type { NaviState } from "@/types";
 import { formatMoney } from "@/lib/constants";
 import { Camera, Mic, Send } from "lucide-react";
-import { analyzeReceipt } from "@/lib/ai/azureOpenAI";
-import { createTransaction } from "@/lib/finance/transactions";
 import { cn } from "@/lib/utils";
 
 const QUICK: Array<{ labelKey: TranslationKey; promptKey: TranslationKey }> = [
@@ -20,6 +17,31 @@ const QUICK: Array<{ labelKey: TranslationKey; promptKey: TranslationKey }> = [
   { labelKey: "navi.quick.spend", promptKey: "navi.quick_prompt.spend" },
   { labelKey: "navi.quick.protect", promptKey: "navi.quick_prompt.protect" },
 ];
+
+const MAX_RECORD_MS = 20_000;
+
+function pickRecorderMimeType(): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/mp4",
+  ];
+  for (const type of candidates) {
+    if (MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return "";
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("read_failed"));
+    reader.readAsDataURL(file);
+  });
+}
 
 export function NaviPanel() {
   const locale = useAppStore((s) => s.locale);
@@ -32,23 +54,50 @@ export function NaviPanel() {
   const confirmPendingTransaction = useAppStore((s) => s.confirmPendingTransaction);
   const cancelPendingTransaction = useAppStore((s) => s.cancelPendingTransaction);
   const trip = useAppStore((s) => s.trip);
-  const addTransaction = useAppStore((s) => s.addTransaction);
 
   const [text, setText] = useState("");
   const [state, setState] = useState<NaviState>("idle");
   const [receiptOpen, setReceiptOpen] = useState(false);
-  const [voicePreview, setVoicePreview] = useState<
-    Array<{ concept: string; amount: number; currency: string }> | null
-  >(null);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const recordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recordingRef = useRef(false);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, pendingSimulation, pendingTransaction]);
+  }, [messages, pendingSimulation, pendingTransaction, errorBanner]);
+
+  useEffect(() => {
+    return () => {
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+      mediaRecorderRef.current = null;
+      recordingRef.current = false;
+      if (recordTimerRef.current) clearTimeout(recordTimerRef.current);
+    };
+  }, []);
+
+  const stopMediaTracks = () => {
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+    mediaRecorderRef.current = null;
+    recordingRef.current = false;
+  };
+
+  const showError = (key: TranslationKey) => {
+    setErrorBanner(t(locale, key));
+    setState("error");
+    setTimeout(() => setState("idle"), 1200);
+  };
 
   const send = async (value?: string) => {
     const msg = (value ?? text).trim();
     if (!msg) return;
+    setErrorBanner(null);
     setText("");
     setState("thinking");
     await askNavi(msg);
@@ -56,52 +105,148 @@ export function NaviPanel() {
     setTimeout(() => setState("idle"), 800);
   };
 
-  const startVoice = () => {
-    setState("listening");
-    // Mock speech recognition — architecture ready for Web Speech / Azure STT
-    setTimeout(() => {
-      setVoicePreview([
-        { concept: "Dinner", amount: 120, currency: "THB" },
-        { concept: "Transport", amount: 60, currency: "THB" },
-      ]);
-      setState("idle");
-    }, 1200);
-  };
-
-  const confirmVoice = async () => {
-    if (!trip || !voicePreview) return;
-    for (const item of voicePreview) {
-      const tx = createTransaction({
-        tripId: trip.id,
-        amountOriginal: item.amount,
-        currencyOriginal: item.currency as never,
-        currencyBase: trip.baseCurrency,
-        concept: item.concept,
-        category: item.concept.toLowerCase().includes("dinner") ? "food" : "transport",
-        source: "voice",
-      });
-      await addTransaction(tx);
+  const finishRecording = async (blob: Blob) => {
+    stopMediaTracks();
+    if (recordTimerRef.current) {
+      clearTimeout(recordTimerRef.current);
+      recordTimerRef.current = null;
     }
-    setVoicePreview(null);
-    setState("success");
-    setTimeout(() => setState("idle"), 800);
+
+    if (!blob.size) {
+      showError("navi.speech_failed");
+      return;
+    }
+
+    setState("thinking");
+    try {
+      const form = new FormData();
+      form.append("audio", blob, "speech.webm");
+      form.append("locale", locale);
+
+      const res = await fetch("/api/navi/speech", {
+        method: "POST",
+        body: form,
+      });
+      const data = (await res.json()) as { text?: string; error?: string };
+
+      if (!res.ok || !data.text?.trim()) {
+        showError("navi.speech_failed");
+        return;
+      }
+
+      await send(data.text.trim());
+    } catch {
+      showError("navi.speech_failed");
+    }
   };
 
-  const scanReceipt = async () => {
+  const stopVoice = () => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+    } else {
+      stopMediaTracks();
+      setState("idle");
+    }
+  };
+
+  const startVoice = async () => {
+    setErrorBanner(null);
+
+    if (recordingRef.current) {
+      stopVoice();
+      return;
+    }
+
+    if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      showError("navi.mic_denied");
+      return;
+    }
+
+    if (typeof MediaRecorder === "undefined") {
+      showError("navi.speech_failed");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      chunksRef.current = [];
+
+      const mimeType = pickRecorderMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
+      mediaRecorderRef.current = recorder;
+      recordingRef.current = true;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+
+      recorder.onstop = () => {
+        const type = recorder.mimeType || mimeType || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type });
+        chunksRef.current = [];
+        void finishRecording(blob);
+      };
+
+      recorder.start();
+      setState("listening");
+
+      recordTimerRef.current = setTimeout(() => {
+        if (recordingRef.current) stopVoice();
+      }, MAX_RECORD_MS);
+    } catch (err) {
+      stopMediaTracks();
+      const name = err instanceof DOMException ? err.name : "";
+      if (name === "NotAllowedError" || name === "PermissionDeniedError") {
+        showError("navi.mic_denied");
+      } else {
+        showError("navi.speech_failed");
+      }
+    }
+  };
+
+  const processReceiptFile = async (file: File) => {
+    setErrorBanner(null);
     setReceiptOpen(true);
     setState("thinking");
-    const result = await analyzeReceipt("mock");
-    if (trip) {
-      setVoicePreview([
-        {
-          concept: result.merchant,
-          amount: result.total,
-          currency: result.currency,
-        },
-      ]);
+
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      if (!dataUrl) {
+        showError("navi.ocr_failed");
+        setReceiptOpen(false);
+        return;
+      }
+
+      const res = await fetch("/api/navi/ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: dataUrl }),
+      });
+      const data = (await res.json()) as { text?: string; error?: string };
+
+      setReceiptOpen(false);
+
+      if (!res.ok || !data.text?.trim()) {
+        showError("navi.ocr_failed");
+        return;
+      }
+
+      const prompt = t(locale, "navi.receipt_prompt", { text: data.text.trim() });
+      await send(prompt);
+    } catch {
+      setReceiptOpen(false);
+      showError("navi.ocr_failed");
     }
-    setState("idle");
-    setReceiptOpen(false);
+  };
+
+  const openReceiptPicker = () => {
+    setErrorBanner(null);
+    fileInputRef.current?.click();
   };
 
   return (
@@ -112,9 +257,14 @@ export function NaviPanel() {
           {state === "listening"
             ? t(locale, "navi.listening")
             : state === "thinking"
-              ? t(locale, "navi.thinking")
+              ? receiptOpen
+                ? t(locale, "navi.processing_receipt")
+                : t(locale, "navi.thinking")
               : t(locale, "navi.tagline")}
         </p>
+        {state === "listening" && (
+          <p className="mt-1 text-xs text-ink-faint">{t(locale, "navi.tap_to_stop")}</p>
+        )}
       </div>
 
       <div className="grid grid-cols-4 gap-1.5 w-full min-w-0 pb-3">
@@ -153,6 +303,15 @@ export function NaviPanel() {
             {m.content}
           </div>
         ))}
+
+        {errorBanner && (
+          <div
+            role="alert"
+            className="rounded-card border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-ink"
+          >
+            {errorBanner}
+          </div>
+        )}
 
         {pendingSimulation && (
           <div className="rounded-card border border-accent/30 bg-accent-soft/30 p-4 space-y-3">
@@ -211,48 +370,41 @@ export function NaviPanel() {
             </div>
           </div>
         )}
-
-        {voicePreview && (
-          <div className="rounded-card border border-border bg-surface p-4 space-y-3">
-            <p className="font-semibold text-sm">{t(locale, "navi.voice_preview_title")}</p>
-            <ul className="space-y-2 text-sm">
-              {voicePreview.map((v, i) => (
-                <li key={i} className="flex justify-between">
-                  <span>{mockConceptLabel(locale, v.concept)}</span>
-                  <span className="font-display font-semibold">
-                    {formatMoney(v.amount, v.currency as never)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <p className="text-xs text-ink-faint">
-              {t(locale, "common.total")}:{" "}
-              {formatMoney(
-                voicePreview.reduce((s, v) => s + v.amount, 0),
-                voicePreview[0].currency as never
-              )}
-            </p>
-            <div className="flex gap-2">
-              <Button className="flex-1" onClick={() => void confirmVoice()}>
-                {t(locale, "common.confirm")}
-              </Button>
-              <Button variant="secondary" className="flex-1" onClick={() => setVoicePreview(null)}>
-                {t(locale, "common.cancel")}
-              </Button>
-            </div>
-          </div>
-        )}
         <div ref={bottomRef} />
       </div>
 
       <div className="pt-3 space-y-3 border-t border-border-subtle mt-auto">
         <div className="flex gap-2">
-          <Button variant="secondary" size="icon" onClick={startVoice} aria-label={t(locale, "navi.tap_speak")}>
+          <Button
+            variant={state === "listening" ? "primary" : "secondary"}
+            size="icon"
+            onClick={() => void startVoice()}
+            aria-label={t(locale, "navi.tap_speak")}
+            aria-pressed={state === "listening"}
+          >
             <Mic className="h-5 w-5" />
           </Button>
-          <Button variant="secondary" size="icon" onClick={() => void scanReceipt()} aria-label="Scan receipt">
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={openReceiptPicker}
+            aria-label={t(locale, "navi.scan_receipt_aria")}
+            disabled={state === "listening" || state === "thinking"}
+          >
             <Camera className="h-5 w-5" />
           </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void processReceiptFile(file);
+            }}
+          />
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -270,8 +422,12 @@ export function NaviPanel() {
         <p className="text-center text-xs text-ink-faint">{t(locale, "navi.tap_speak")}</p>
       </div>
 
-      <BottomSheet open={receiptOpen} onClose={() => setReceiptOpen(false)} title={t(locale, "navi.scan_receipt_title")}>
-        <p className="text-sm text-ink-muted">{t(locale, "navi.scan_receipt_mock")}</p>
+      <BottomSheet
+        open={receiptOpen}
+        onClose={() => setReceiptOpen(false)}
+        title={t(locale, "navi.scan_receipt_title")}
+      >
+        <p className="text-sm text-ink-muted">{t(locale, "navi.processing_receipt")}</p>
       </BottomSheet>
     </div>
   );

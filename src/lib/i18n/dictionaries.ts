@@ -129,6 +129,19 @@ const dictionaries = {
     "navi.scan_receipt_title": "Scanning receipt",
     "navi.scan_receipt_mock":
       "Mock OCR is analyzing the image… Azure AI Vision ready when connected.",
+    "navi.processing_receipt": "Processing receipt…",
+    "navi.speech_failed":
+      "We couldn't understand the audio. Try again or type the expense.",
+    "navi.ocr_failed":
+      "We couldn't read the receipt. Try better lighting or type the expense manually.",
+    "navi.mic_denied":
+      "Microphone permission denied. Allow access in the browser or type the expense.",
+    "navi.camera_denied":
+      "Camera / photo access denied. Allow access or type the expense manually.",
+    "navi.tap_to_stop": "Tap again to stop",
+    "navi.scan_receipt_aria": "Scan receipt",
+    "navi.receipt_prompt":
+      "Register this expense from the receipt text:\n{text}",
     "navi.mock_merchant": "Local market",
     "navi.mock_dinner": "Dinner",
     "activity.add": "Add",
@@ -365,6 +378,19 @@ const dictionaries = {
     "navi.scan_receipt_title": "Escaneando recibo",
     "navi.scan_receipt_mock":
       "OCR simulado analizando la imagen… Azure AI Vision listo al conectar.",
+    "navi.processing_receipt": "Procesando recibo…",
+    "navi.speech_failed":
+      "No pudimos entender el audio, intenta de nuevo o escribe el gasto.",
+    "navi.ocr_failed":
+      "No pudimos leer el recibo, intenta con mejor luz o escribe el gasto manualmente.",
+    "navi.mic_denied":
+      "Permiso de micrófono denegado. Actívalo en el navegador o escribe el gasto.",
+    "navi.camera_denied":
+      "Permiso de cámara/fotos denegado. Actívalo o escribe el gasto manualmente.",
+    "navi.tap_to_stop": "Toca de nuevo para detener",
+    "navi.scan_receipt_aria": "Escanear recibo",
+    "navi.receipt_prompt":
+      "Registra este gasto a partir del texto del recibo:\n{text}",
     "navi.mock_merchant": "Mercado local",
     "navi.mock_dinner": "Cena",
     "activity.add": "Añadir",
@@ -600,6 +626,19 @@ const dictionaries = {
     "navi.scan_receipt_title": "Escaneando recibo",
     "navi.scan_receipt_mock":
       "OCR simulado analisando a imagem… Azure AI Vision pronto ao conectar.",
+    "navi.processing_receipt": "Processando recibo…",
+    "navi.speech_failed":
+      "Não conseguimos entender o áudio. Tente de novo ou digite o gasto.",
+    "navi.ocr_failed":
+      "Não conseguimos ler o recibo. Tente com mais luz ou digite o gasto manualmente.",
+    "navi.mic_denied":
+      "Permissão de microfone negada. Ative no navegador ou digite o gasto.",
+    "navi.camera_denied":
+      "Permissão de câmera/fotos negada. Ative ou digite o gasto manualmente.",
+    "navi.tap_to_stop": "Toque de novo para parar",
+    "navi.scan_receipt_aria": "Escanear recibo",
+    "navi.receipt_prompt":
+      "Registre este gasto a partir do texto do recibo:\n{text}",
     "navi.mock_merchant": "Mercado local",
     "navi.mock_dinner": "Jantar",
     "activity.add": "Adicionar",

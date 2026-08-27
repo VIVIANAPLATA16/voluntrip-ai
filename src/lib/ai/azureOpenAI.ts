@@ -86,7 +86,7 @@ export async function askNavi(prompt: string, context: string): Promise<AskNaviR
   };
 }
 
-/** Receipt OCR is not wired yet — always returns a safe mock (never throws). */
+/** Receipt OCR stub — real OCR is server-side via /api/navi/ocr (Azure Vision). */
 export async function analyzeReceipt(
   imageBase64: string
 ): Promise<AnalyzeReceiptResult> {
