@@ -2,19 +2,42 @@
  * Azure Speech-to-Text — SERVER ONLY.
  * Import exclusively from Route Handlers (e.g. src/app/api/navi/speech/route.ts).
  *
- * Browser formats:
- * - Chrome/Android: typically WebM/Opus
- * - Safari/iOS (and all iPhone browsers via WebKit): typically audio/mp4 (AAC)
+ * Preferred path: client converts MediaRecorder output (WebM/MP4/…) to
+ * 16 kHz mono PCM WAV before upload. Azure short-audio REST is reliable with:
+ *   Content-Type: audio/wav; codecs=audio/pcm; samplerate=16000
  *
- * Content-Type MUST match the actual bytes. A wrong type (e.g. labeling MP4 as
- * WebM) makes Azure return NoMatch → "couldn't understand the audio".
+ * Magic-byte sniffing remains as a safety fallback if a non-WAV payload arrives.
  */
 
 import type { Locale } from "@/lib/i18n/dictionaries";
 
+/** Exact header Azure expects for 16 kHz mono PCM WAV. */
+export const AZURE_WAV_CONTENT_TYPE =
+  "audio/wav; codecs=audio/pcm; samplerate=16000";
+
 export interface AzureSpeechConfig {
   key: string;
   region: string;
+}
+
+export interface WavPcmInfo {
+  sampleRate: number;
+  channels: number;
+  bitsPerSample: number;
+  dataBytes: number;
+  durationSec: number;
+  rms: number;
+}
+
+export interface SpeechDebugInfo {
+  bytes: number;
+  declared: string;
+  contentTypeSent: string;
+  sniffed: string | null;
+  wav: WavPcmInfo | null;
+  azureHttpStatus?: number;
+  azureBody?: unknown;
+  azureRecognitionStatus?: string;
 }
 
 /** Map app locale → Azure Speech locale code. */
@@ -46,44 +69,40 @@ interface SpeechRecognitionResponse {
   DisplayText?: string;
   Offset?: number;
   Duration?: number;
+  error?: { message?: string; code?: string };
 }
 
 function readAscii(bytes: Uint8Array, start: number, len: number): string {
-  return String.fromCharCode(...bytes.subarray(start, start + len));
+  let s = "";
+  for (let i = 0; i < len; i++) s += String.fromCharCode(bytes[start + i] ?? 0);
+  return s;
 }
 
 /**
- * Detect container from magic bytes. Source of truth when client mime is wrong/empty.
+ * Detect container from magic bytes. Fallback when client mime is wrong/empty.
  */
 export function sniffAudioContentType(audio: ArrayBuffer): string | null {
   const bytes = new Uint8Array(audio);
   if (bytes.length < 12) return null;
 
-  // WebM / Matroska EBML
   if (bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3) {
     return "audio/webm";
   }
-  // Ogg
   if (readAscii(bytes, 0, 4) === "OggS") {
     return "audio/ogg";
   }
-  // WAV
   if (readAscii(bytes, 0, 4) === "RIFF" && readAscii(bytes, 8, 4) === "WAVE") {
     return "audio/wav";
   }
-  // MP3 with ID3 tag
   if (readAscii(bytes, 0, 3) === "ID3") {
     return "audio/mpeg";
   }
-  // MP3 frame sync
   if (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0) {
     return "audio/mpeg";
   }
-  // MP4 / M4A / AAC-in-MP4: ....ftyp
   if (readAscii(bytes, 4, 4) === "ftyp") {
     return "audio/mp4";
   }
-  // ADTS AAC (raw)
   if (bytes[0] === 0xff && (bytes[1] & 0xf6) === 0xf0) {
     return "audio/aac";
   }
@@ -91,7 +110,83 @@ export function sniffAudioContentType(audio: ArrayBuffer): string | null {
   return null;
 }
 
-/** Normalize client-declared type and prefer sniffed type when they conflict. */
+/** Parse PCM WAV fmt/data for diagnostics (and RMS of first channel). */
+export function inspectWavPcm(audio: ArrayBuffer): WavPcmInfo | null {
+  const bytes = new Uint8Array(audio);
+  if (bytes.length < 44) return null;
+  if (readAscii(bytes, 0, 4) !== "RIFF" || readAscii(bytes, 8, 4) !== "WAVE") {
+    return null;
+  }
+
+  const view = new DataView(audio);
+  let offset = 12;
+  let sampleRate = 0;
+  let channels = 0;
+  let bitsPerSample = 0;
+  let dataOffset = -1;
+  let dataBytes = 0;
+
+  while (offset + 8 <= bytes.length) {
+    const id = readAscii(bytes, offset, 4);
+    const size = view.getUint32(offset + 4, true);
+    const next = offset + 8 + size + (size % 2); // word-align
+    if (id === "fmt " && size >= 16) {
+      channels = view.getUint16(offset + 10, true);
+      sampleRate = view.getUint32(offset + 12, true);
+      bitsPerSample = view.getUint16(offset + 22, true);
+    } else if (id === "data") {
+      dataOffset = offset + 8;
+      dataBytes = size;
+      break;
+    }
+    if (next <= offset) break;
+    offset = next;
+  }
+
+  if (!sampleRate || dataOffset < 0 || bitsPerSample !== 16) {
+    return sampleRate
+      ? {
+          sampleRate,
+          channels,
+          bitsPerSample,
+          dataBytes,
+          durationSec: sampleRate && channels && bitsPerSample
+            ? dataBytes / (sampleRate * channels * (bitsPerSample / 8))
+            : 0,
+          rms: 0,
+        }
+      : null;
+  }
+
+  const sampleCount = Math.floor(dataBytes / 2);
+  const maxSamples = Math.min(sampleCount, sampleRate * 30); // cap RMS scan
+  let sumSq = 0;
+  const step = channels || 1;
+  let n = 0;
+  for (let i = 0; i < maxSamples; i += step) {
+    const s = view.getInt16(dataOffset + i * 2, true) / 32768;
+    sumSq += s * s;
+    n++;
+  }
+  const rms = n ? Math.sqrt(sumSq / n) : 0;
+  const durationSec =
+    sampleRate && channels ? dataBytes / (sampleRate * channels * 2) : 0;
+
+  return {
+    sampleRate,
+    channels,
+    bitsPerSample,
+    dataBytes,
+    durationSec,
+    rms,
+  };
+}
+
+/**
+ * Resolve Content-Type for Azure.
+ * WAV (normal path from client) → exact Azure PCM header.
+ * Other formats kept as fallback only.
+ */
 export function resolveAudioContentType(
   audio: ArrayBuffer,
   declared?: string | null
@@ -99,8 +194,16 @@ export function resolveAudioContentType(
   const sniffed = sniffAudioContentType(audio);
   const raw = (declared || "").split(";")[0]?.trim().toLowerCase() || "";
 
+  if (sniffed === "audio/wav" || raw === "audio/wav" || raw === "audio/wave" || raw === "audio/x-wav") {
+    // Prefer samplerate from the actual WAV header when available
+    const info = inspectWavPcm(audio);
+    if (info?.sampleRate) {
+      return `audio/wav; codecs=audio/pcm; samplerate=${info.sampleRate}`;
+    }
+    return AZURE_WAV_CONTENT_TYPE;
+  }
+
   if (sniffed) {
-    // Client said webm but bytes are mp4 (classic iOS bug) → trust bytes
     if (raw && sniffed !== raw && !(raw.startsWith(sniffed) || sniffed.startsWith(raw))) {
       const webmVsMp4 =
         (raw.includes("webm") && sniffed.includes("mp4")) ||
@@ -115,16 +218,25 @@ export function resolveAudioContentType(
 
   if (raw === "audio/m4a" || raw === "audio/x-m4a") return "audio/mp4";
   if (raw === "audio/mp3") return "audio/mpeg";
-  if (raw === "audio/wave" || raw === "audio/x-wav") return "audio/wav";
   if (raw) return raw;
-  return sniffed || "audio/wav";
+  return sniffed || AZURE_WAV_CONTENT_TYPE;
+}
+
+export class SpeechTranscribeError extends Error {
+  code: string;
+  debug: SpeechDebugInfo;
+
+  constructor(code: string, message: string, debug: SpeechDebugInfo) {
+    super(message);
+    this.name = "SpeechTranscribeError";
+    this.code = code;
+    this.debug = debug;
+  }
 }
 
 /**
  * Transcribe raw audio bytes via Azure Speech REST.
- * @param audio - WebM/OGG/MP4/AAC/WAV/MP3 bytes from the client
- * @param contentType - declared mime (may be wrong on iOS); sniffed as fallback
- * @param locale - app locale (en|es|pt)
+ * Prefer 16 kHz mono PCM WAV from the client.
  */
 export async function transcribeAudio(
   audio: ArrayBuffer,
@@ -137,11 +249,49 @@ export async function transcribeAudio(
   }
 
   if (!audio.byteLength) {
-    throw new Error("Empty audio");
+    throw new SpeechTranscribeError("Empty audio", "Empty audio", {
+      bytes: 0,
+      declared: contentType,
+      contentTypeSent: contentType,
+      sniffed: null,
+      wav: null,
+    });
   }
 
+  const sniffed = sniffAudioContentType(audio);
+  const wav = sniffed === "audio/wav" ? inspectWavPcm(audio) : null;
   const resolvedType = resolveAudioContentType(audio, contentType);
   const language = speechLocaleFromApp(locale);
+
+  const baseDebug: SpeechDebugInfo = {
+    bytes: audio.byteLength,
+    declared: contentType,
+    contentTypeSent: resolvedType,
+    sniffed,
+    wav,
+  };
+
+  console.info("[navi/speech] prepared", {
+    locale: language,
+    ...baseDebug,
+  });
+
+  // Reject near-silent / tiny clips before Azure (clearer than opaque NoMatch)
+  if (wav && wav.durationSec < 0.25) {
+    throw new SpeechTranscribeError(
+      "NO_SPEECH",
+      "Audio too short",
+      baseDebug
+    );
+  }
+  if (wav && wav.rms < 0.0005) {
+    throw new SpeechTranscribeError(
+      "NO_SPEECH",
+      "Audio appears silent",
+      baseDebug
+    );
+  }
+
   const url =
     `https://${config.region}.stt.speech.microsoft.com` +
     `/speech/recognition/conversation/cognitiveservices/v1?language=${encodeURIComponent(language)}`;
@@ -156,19 +306,41 @@ export async function transcribeAudio(
     body: audio,
   });
 
+  const rawText = await res.text().catch(() => "");
+  let data: SpeechRecognitionResponse = {};
+  try {
+    data = rawText ? (JSON.parse(rawText) as SpeechRecognitionResponse) : {};
+  } catch {
+    data = { error: { message: rawText.slice(0, 500) } };
+  }
+
+  console.info("[navi/speech] azure response", {
+    httpStatus: res.status,
+    body: data,
+  });
+
+  const debug: SpeechDebugInfo = {
+    ...baseDebug,
+    azureHttpStatus: res.status,
+    azureBody: data,
+    azureRecognitionStatus: data.RecognitionStatus,
+  };
+
   if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(
-      `Azure Speech failed (${res.status})${detail ? `: ${detail.slice(0, 200)}` : ""}`
+    throw new SpeechTranscribeError(
+      "AZURE_HTTP",
+      `Azure Speech failed (${res.status})${rawText ? `: ${rawText.slice(0, 200)}` : ""}`,
+      debug
     );
   }
 
-  const data = (await res.json()) as SpeechRecognitionResponse;
   const status = data.RecognitionStatus || "";
 
   if (status === "Success") {
     const text = (data.DisplayText || "").trim();
-    if (!text) throw new Error("Empty transcription");
+    if (!text) {
+      throw new SpeechTranscribeError("NO_SPEECH", "Empty transcription", debug);
+    }
     return text;
   }
 
@@ -177,8 +349,12 @@ export async function transcribeAudio(
     status === "InitialSilenceTimeout" ||
     status === "BabbleTimeout"
   ) {
-    throw new Error("NO_SPEECH");
+    throw new SpeechTranscribeError("NO_SPEECH", `Azure status: ${status}`, debug);
   }
 
-  throw new Error(`Azure Speech status: ${status || "unknown"}`);
+  throw new SpeechTranscribeError(
+    "AZURE_STATUS",
+    `Azure Speech status: ${status || "unknown"}`,
+    debug
+  );
 }

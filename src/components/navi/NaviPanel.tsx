@@ -10,6 +10,7 @@ import type { NaviState } from "@/types";
 import { formatMoney } from "@/lib/constants";
 import { Camera, Mic, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { blobToAzureWav } from "@/lib/audio/wavEncode";
 
 const QUICK: Array<{ labelKey: TranslationKey; promptKey: TranslationKey }> = [
   { labelKey: "navi.quick.afford", promptKey: "navi.quick_prompt.afford" },
@@ -42,16 +43,6 @@ function pickRecorderMimeType(): string {
     if (MediaRecorder.isTypeSupported(type)) return type;
   }
   return "";
-}
-
-function extensionForMime(mime: string): string {
-  const base = mime.split(";")[0]?.trim().toLowerCase() || "";
-  if (base === "audio/mp4" || base === "audio/m4a" || base === "audio/aac") return "m4a";
-  if (base === "audio/mpeg" || base === "audio/mp3") return "mp3";
-  if (base === "audio/ogg" || base === "audio/opus") return "ogg";
-  if (base === "audio/wav" || base === "audio/wave" || base === "audio/x-wav") return "wav";
-  if (base.startsWith("audio/webm")) return "webm";
-  return "bin";
 }
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -125,7 +116,7 @@ export function NaviPanel() {
     setTimeout(() => setState("idle"), 800);
   };
 
-  const finishRecording = async (blob: Blob, recordedMime: string) => {
+  const finishRecording = async (blob: Blob) => {
     stopMediaTracks();
     if (recordTimerRef.current) {
       clearTimeout(recordTimerRef.current);
@@ -133,32 +124,57 @@ export function NaviPanel() {
     }
 
     if (!blob.size) {
+      console.warn("[navi/speech] empty raw recording blob");
       showError("navi.speech_failed");
       return;
     }
 
     setState("thinking");
     try {
-      // Prefer the real MediaRecorder mimeType; never invent webm on iOS.
-      const mime =
-        (blob.type && blob.type !== "application/octet-stream" ? blob.type : "") ||
-        recordedMime ||
-        (isAppleWebKit() ? "audio/mp4" : "");
-      const ext = extensionForMime(mime || "application/octet-stream");
-      const file = new File([blob], `speech.${ext}`, {
-        type: mime || blob.type || "application/octet-stream",
+      console.info("[navi/speech] raw recording", {
+        size: blob.size,
+        type: blob.type || "(empty)",
       });
 
+      // Decode WebM/MP4/… → 16 kHz mono PCM WAV (Azure short-audio guaranteed format).
+      const wav = await blobToAzureWav(blob);
+      console.info("[navi/speech] wav ready", {
+        rawBytes: wav.rawBytes,
+        wavBytes: wav.wavBytes,
+        durationSec: Number(wav.durationSec.toFixed(3)),
+        rms: Number(wav.rms.toFixed(5)),
+        sourceSampleRate: wav.sourceSampleRate,
+        sampleRate: wav.sampleRate,
+      });
+
+      if (!wav.blob.size) {
+        showError("navi.speech_failed");
+        return;
+      }
+
+      const file = new File([wav.blob], "speech.wav", { type: "audio/wav" });
       const form = new FormData();
       form.append("audio", file);
       form.append("locale", locale);
-      if (mime) form.append("contentType", mime);
+      form.append("contentType", "audio/wav");
 
       const res = await fetch("/api/navi/speech", {
         method: "POST",
         body: form,
       });
-      const data = (await res.json()) as { text?: string; error?: string };
+      const data = (await res.json()) as {
+        text?: string;
+        error?: string;
+        code?: string;
+        message?: string;
+        debug?: unknown;
+      };
+
+      // Full response — 422 is from OUR route (Azure NoMatch mapped), not Azure HTTP.
+      console.info("[navi/speech] api response", {
+        httpStatus: res.status,
+        body: data,
+      });
 
       if (!res.ok || !data.text?.trim()) {
         showError("navi.speech_failed");
@@ -166,7 +182,8 @@ export function NaviPanel() {
       }
 
       await send(data.text.trim());
-    } catch {
+    } catch (err) {
+      console.error("[navi/speech] client error", err);
       showError("navi.speech_failed");
     }
   };
@@ -225,7 +242,7 @@ export function NaviPanel() {
           "";
         const blob = new Blob(chunksRef.current, { type: type || undefined });
         chunksRef.current = [];
-        void finishRecording(blob, type);
+        void finishRecording(blob);
       };
 
       // Timeslice helps Safari/iOS flush chunks before stop.
