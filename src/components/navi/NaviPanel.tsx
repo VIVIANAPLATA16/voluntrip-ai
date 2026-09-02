@@ -20,18 +20,38 @@ const QUICK: Array<{ labelKey: TranslationKey; promptKey: TranslationKey }> = [
 
 const MAX_RECORD_MS = 20_000;
 
+/** Prefer MP4/AAC on iOS/WebKit — WebM is not recordable there. */
+function isAppleWebKit(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && "ontouchend" in document);
+}
+
 function pickRecorderMimeType(): string {
   if (typeof MediaRecorder === "undefined") return "";
-  const candidates = [
+  // iOS/WebKit: only audio/mp4 (AAC) works. Prefer it first to avoid bad fallbacks.
+  const appleFirst = ["audio/mp4", "audio/aac", "audio/mpeg"];
+  const others = [
     "audio/webm;codecs=opus",
     "audio/webm",
     "audio/ogg;codecs=opus",
     "audio/mp4",
   ];
+  const candidates = isAppleWebKit() ? [...appleFirst, ...others] : [...others, ...appleFirst];
   for (const type of candidates) {
     if (MediaRecorder.isTypeSupported(type)) return type;
   }
   return "";
+}
+
+function extensionForMime(mime: string): string {
+  const base = mime.split(";")[0]?.trim().toLowerCase() || "";
+  if (base === "audio/mp4" || base === "audio/m4a" || base === "audio/aac") return "m4a";
+  if (base === "audio/mpeg" || base === "audio/mp3") return "mp3";
+  if (base === "audio/ogg" || base === "audio/opus") return "ogg";
+  if (base === "audio/wav" || base === "audio/wave" || base === "audio/x-wav") return "wav";
+  if (base.startsWith("audio/webm")) return "webm";
+  return "bin";
 }
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -105,7 +125,7 @@ export function NaviPanel() {
     setTimeout(() => setState("idle"), 800);
   };
 
-  const finishRecording = async (blob: Blob) => {
+  const finishRecording = async (blob: Blob, recordedMime: string) => {
     stopMediaTracks();
     if (recordTimerRef.current) {
       clearTimeout(recordTimerRef.current);
@@ -119,9 +139,20 @@ export function NaviPanel() {
 
     setState("thinking");
     try {
+      // Prefer the real MediaRecorder mimeType; never invent webm on iOS.
+      const mime =
+        (blob.type && blob.type !== "application/octet-stream" ? blob.type : "") ||
+        recordedMime ||
+        (isAppleWebKit() ? "audio/mp4" : "");
+      const ext = extensionForMime(mime || "application/octet-stream");
+      const file = new File([blob], `speech.${ext}`, {
+        type: mime || blob.type || "application/octet-stream",
+      });
+
       const form = new FormData();
-      form.append("audio", blob, "speech.webm");
+      form.append("audio", file);
       form.append("locale", locale);
+      if (mime) form.append("contentType", mime);
 
       const res = await fetch("/api/navi/speech", {
         method: "POST",
@@ -186,13 +217,19 @@ export function NaviPanel() {
       };
 
       recorder.onstop = () => {
-        const type = recorder.mimeType || mimeType || "audio/webm";
-        const blob = new Blob(chunksRef.current, { type });
+        // iOS often leaves recorder.mimeType empty even when bytes are MP4/AAC.
+        const type =
+          recorder.mimeType ||
+          mimeType ||
+          (isAppleWebKit() ? "audio/mp4" : chunksRef.current[0]?.type) ||
+          "";
+        const blob = new Blob(chunksRef.current, { type: type || undefined });
         chunksRef.current = [];
-        void finishRecording(blob);
+        void finishRecording(blob, type);
       };
 
-      recorder.start();
+      // Timeslice helps Safari/iOS flush chunks before stop.
+      recorder.start(1000);
       setState("listening");
 
       recordTimerRef.current = setTimeout(() => {
