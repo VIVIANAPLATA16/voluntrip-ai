@@ -4,6 +4,7 @@ import { create } from "zustand";
 import type {
   AIInsight,
   AgentMessage,
+  CulturalProfile,
   CurrencyCode,
   Goal,
   HostBenefit,
@@ -15,6 +16,11 @@ import type {
   Trip,
 } from "@/types";
 import * as db from "@/lib/db/indexeddb";
+import {
+  clearCulturalProfile as clearStoredCulturalProfile,
+  getCulturalProfile as readCulturalProfile,
+  saveCulturalProfile as persistCulturalProfile,
+} from "@/lib/culture/profile";
 import { createDemoData } from "@/lib/demo/sampleData";
 import { createTransaction } from "@/lib/finance/transactions";
 import { naviAgent } from "@/lib/agent/agent";
@@ -53,6 +59,7 @@ interface AppStore {
   locale: LocaleCode;
   pendingSimulation: PurchaseSimulation | null;
   pendingTransaction: Transaction | null;
+  culturalProfile: CulturalProfile | null;
   onboarding: OnboardingDraft;
 
   hydrate: () => Promise<void>;
@@ -73,6 +80,8 @@ interface AppStore {
   cancelPendingTransaction: () => void;
   getSnapshot: () => ReturnType<typeof buildBudgetSnapshot> | null;
   getRunway: () => ReturnType<typeof calculateMoneyRunway> | null;
+  saveCulturalProfile: (profile: CulturalProfile) => Promise<void>;
+  clearCulturalProfile: () => Promise<void>;
 }
 
 const defaultOnboarding = (): OnboardingDraft => {
@@ -127,6 +136,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   locale: "en",
   pendingSimulation: null,
   pendingTransaction: null,
+  culturalProfile: null,
   onboarding: defaultOnboarding(),
 
   hydrate: async () => {
@@ -146,6 +156,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }
       const messages = await db.getMessages();
       naviAgent.memory.load(messages);
+      const culturalProfile = await readCulturalProfile();
 
       let locale: LocaleCode = profile?.locale ?? savedLocale ?? "en";
       if (!profile && !savedLocale && typeof navigator !== "undefined") {
@@ -160,6 +171,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         goals,
         insights,
         messages,
+        culturalProfile,
         locale,
         hydrated: true,
         offline: typeof navigator !== "undefined" ? !navigator.onLine : false,
@@ -310,6 +322,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       goals: demo.goals,
       insights: demo.insights,
       messages: [],
+      culturalProfile: null,
       locale: demo.profile.locale,
     });
   },
@@ -324,6 +337,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       goals: [],
       insights: [],
       messages: [],
+      culturalProfile: null,
       onboarding: defaultOnboarding(),
     });
   },
@@ -442,5 +456,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
     if (!trip) return null;
     const snap = buildBudgetSnapshot(trip, transactions, pockets);
     return calculateMoneyRunway(trip, snap);
+  },
+
+  saveCulturalProfile: async (profile) => {
+    const stored = await persistCulturalProfile(profile);
+    set({ culturalProfile: stored });
+  },
+
+  clearCulturalProfile: async () => {
+    await clearStoredCulturalProfile();
+    set({ culturalProfile: null });
   },
 }));

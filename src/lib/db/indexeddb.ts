@@ -2,6 +2,7 @@ import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type {
   AIInsight,
   AgentMessage,
+  CulturalProfile,
   Goal,
   Pocket,
   Profile,
@@ -46,52 +47,83 @@ interface VoluntripDB extends DBSchema {
     key: string;
     value: { key: string; value: unknown };
   };
+  cultural_profile: {
+    key: string;
+    value: CulturalProfile;
+  };
 }
 
-const DB_NAME = "voluntrip-ai";
-const DB_VERSION = 1;
+export const VOLUNTRIP_DB_NAME = "voluntrip-ai";
+export const VOLUNTRIP_DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase<VoluntripDB>> | null = null;
 
+type UpgradeDB = Pick<IDBPDatabase<VoluntripDB>, "objectStoreNames" | "createObjectStore">;
+
+/** Historical v1 stores — used by tests to seed a pre-2.0 database. */
+export function createV1Stores(db: UpgradeDB) {
+  if (!db.objectStoreNames.contains("profile")) {
+    db.createObjectStore("profile", { keyPath: "id" });
+  }
+  if (!db.objectStoreNames.contains("trips")) {
+    db.createObjectStore("trips", { keyPath: "id" });
+  }
+  if (!db.objectStoreNames.contains("pockets")) {
+    const store = db.createObjectStore("pockets", { keyPath: "id" });
+    store.createIndex("by-trip", "tripId");
+  }
+  if (!db.objectStoreNames.contains("transactions")) {
+    const store = db.createObjectStore("transactions", { keyPath: "id" });
+    store.createIndex("by-trip", "tripId");
+  }
+  if (!db.objectStoreNames.contains("goals")) {
+    const store = db.createObjectStore("goals", { keyPath: "id" });
+    store.createIndex("by-trip", "tripId");
+  }
+  if (!db.objectStoreNames.contains("insights")) {
+    const store = db.createObjectStore("insights", { keyPath: "id" });
+    store.createIndex("by-trip", "tripId");
+  }
+  if (!db.objectStoreNames.contains("messages")) {
+    db.createObjectStore("messages", { keyPath: "id" });
+  }
+  if (!db.objectStoreNames.contains("meta")) {
+    db.createObjectStore("meta", { keyPath: "key" });
+  }
+}
+
+/** Additive upgrades only — never delete existing stores. */
+export function upgradeVoluntripDB(db: UpgradeDB, oldVersion: number) {
+  if (oldVersion < 1) {
+    createV1Stores(db);
+  }
+  if (oldVersion < 2) {
+    if (!db.objectStoreNames.contains("cultural_profile")) {
+      db.createObjectStore("cultural_profile", { keyPath: "id" });
+    }
+  }
+}
+
 export function getDB() {
-  if (typeof window === "undefined") {
+  if (typeof indexedDB === "undefined") {
     throw new Error("IndexedDB is only available in the browser");
   }
   if (!dbPromise) {
-    dbPromise = openDB<VoluntripDB>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains("profile")) {
-          db.createObjectStore("profile", { keyPath: "id" });
-        }
-        if (!db.objectStoreNames.contains("trips")) {
-          db.createObjectStore("trips", { keyPath: "id" });
-        }
-        if (!db.objectStoreNames.contains("pockets")) {
-          const store = db.createObjectStore("pockets", { keyPath: "id" });
-          store.createIndex("by-trip", "tripId");
-        }
-        if (!db.objectStoreNames.contains("transactions")) {
-          const store = db.createObjectStore("transactions", { keyPath: "id" });
-          store.createIndex("by-trip", "tripId");
-        }
-        if (!db.objectStoreNames.contains("goals")) {
-          const store = db.createObjectStore("goals", { keyPath: "id" });
-          store.createIndex("by-trip", "tripId");
-        }
-        if (!db.objectStoreNames.contains("insights")) {
-          const store = db.createObjectStore("insights", { keyPath: "id" });
-          store.createIndex("by-trip", "tripId");
-        }
-        if (!db.objectStoreNames.contains("messages")) {
-          db.createObjectStore("messages", { keyPath: "id" });
-        }
-        if (!db.objectStoreNames.contains("meta")) {
-          db.createObjectStore("meta", { keyPath: "key" });
-        }
+    dbPromise = openDB<VoluntripDB>(VOLUNTRIP_DB_NAME, VOLUNTRIP_DB_VERSION, {
+      upgrade(db, oldVersion) {
+        upgradeVoluntripDB(db, oldVersion);
       },
     });
   }
   return dbPromise;
+}
+
+/** Test helper: close the cached connection so the next open can upgrade. */
+export async function closeDB() {
+  if (!dbPromise) return;
+  const db = await dbPromise;
+  db.close();
+  dbPromise = null;
 }
 
 export async function saveProfile(profile: Profile) {
@@ -185,6 +217,21 @@ export async function getMessages(): Promise<AgentMessage[]> {
   );
 }
 
+export async function saveCulturalProfileRecord(profile: CulturalProfile) {
+  const db = await getDB();
+  await db.put("cultural_profile", profile);
+}
+
+export async function getCulturalProfileRecord(): Promise<CulturalProfile | null> {
+  const db = await getDB();
+  return (await db.get("cultural_profile", "default")) ?? null;
+}
+
+export async function deleteCulturalProfileRecord() {
+  const db = await getDB();
+  await db.delete("cultural_profile", "default");
+}
+
 export async function clearAllData() {
   const db = await getDB();
   const stores = [
@@ -196,6 +243,7 @@ export async function clearAllData() {
     "insights",
     "messages",
     "meta",
+    "cultural_profile",
   ] as const;
   await Promise.all(stores.map((s) => db.clear(s)));
 }
