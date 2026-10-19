@@ -89,6 +89,36 @@ const dictionaries = {
       "I couldn't connect to NAVI right now. Please try again.{detail}",
     "navi.azure_fallback":
       "Done. What else can I help with for your budget?",
+    "navi.experience.no_profile":
+      "You don't have a Cultural DNA profile yet. Create one so I can use Qloo taste signals. Meanwhile, here are generic ideas — generic, not from Qloo.",
+    "navi.experience.no_consent":
+      "Cultural DNA consent is off, so I will not query Qloo. Enable consent on your cultural profile for personalized matches. Meanwhile, here are generic ideas — generic, not from Qloo.",
+    "navi.experience.qloo_unavailable":
+      "Qloo is unavailable right now ({reason}). Here are generic ideas — generic, not from Qloo.",
+    "navi.experience.qloo_demo":
+      "Qloo is in demo mode (no live key). These ideas are generic, not from Qloo.",
+    "navi.experience.recommend":
+      "Try {name}{place}.\nVoluntrip Value Score: {score}/100.",
+    "navi.experience.estimated_cost":
+      "Estimated cost: {cost} per person (estimate, not a verified price).",
+    "navi.experience.from_qloo":
+      "From Qloo\nMatched tags: {tags}\nRank: {rank}\nSource: {source}",
+    "navi.experience.from_voluntrip":
+      "From Voluntrip\nEstimated cost: {cost} per person (estimate, not a verified price).\nDaily safe spend: {dailyBefore} → {dailyAfter}.\nProtected money untouched: {protected}.\nRunway: {runway}.",
+    "navi.experience.alternative":
+      "Cheaper alternative with strong cultural fit: {name} (estimated {cost} per person).",
+    "navi.experience.no_alternative":
+      "I don't have a cheaper alternative with cultural fit of 60 or higher.",
+    "navi.experience.simulate_hint":
+      "If you want to go, I can simulate this estimated cost first. Nothing is recorded until you Confirm.",
+    "navi.experience.no_last":
+      "I don't have a recommendation to explain yet. Ask me what to do tonight first.",
+    "navi.experience.no_best":
+      "I couldn't find a safe experience that fits your available money without touching protected funds.",
+    "navi.experience.explain": "Why {name}:",
+    "navi.experience.no_matched_tags": "none",
+    "navi.experience.protected_yes": "yes",
+    "navi.experience.protected_no": "no",
     "pockets.title": "Pockets",
     "pockets.locked": "Locked",
     "pockets.open": "Open",
@@ -338,6 +368,36 @@ const dictionaries = {
       "No pude conectar con NAVI en este momento. Intenta de nuevo.{detail}",
     "navi.azure_fallback":
       "Listo. ¿En qué más te ayudo con tu presupuesto?",
+    "navi.experience.no_profile":
+      "Aún no tienes un perfil de Cultural DNA. Créalo para que pueda usar señales de Qloo. Mientras tanto, aquí hay ideas genéricas — generic, not from Qloo.",
+    "navi.experience.no_consent":
+      "El consentimiento de Cultural DNA está desactivado, así que no consultaré Qloo. Actívalo en tu perfil cultural para recomendaciones personalizadas. Mientras tanto, aquí hay ideas genéricas — generic, not from Qloo.",
+    "navi.experience.qloo_unavailable":
+      "Qloo no está disponible ahora ({reason}). Aquí hay ideas genéricas — generic, not from Qloo.",
+    "navi.experience.qloo_demo":
+      "Qloo está en modo demo (sin clave en vivo). Estas ideas son generic, not from Qloo.",
+    "navi.experience.recommend":
+      "Prueba {name}{place}.\nVoluntrip Value Score: {score}/100.",
+    "navi.experience.estimated_cost":
+      "Costo estimado: {cost} por persona (estimado, no es un precio verificado).",
+    "navi.experience.from_qloo":
+      "From Qloo\nEtiquetas coincidentes: {tags}\nPuesto: {rank}\nSource: {source}",
+    "navi.experience.from_voluntrip":
+      "From Voluntrip\nCosto estimado: {cost} por persona (estimado, no es un precio verificado).\nGasto diario seguro: {dailyBefore} → {dailyAfter}.\nDinero protegido intacto: {protected}.\nRunway: {runway}.",
+    "navi.experience.alternative":
+      "Alternativa más barata con buen encaje cultural: {name} (estimado {cost} por persona).",
+    "navi.experience.no_alternative":
+      "No tengo una alternativa más barata con culturalFit de 60 o más.",
+    "navi.experience.simulate_hint":
+      "Si quieres ir, puedo simular este costo estimado primero. No se registra nada hasta que Confirmes.",
+    "navi.experience.no_last":
+      "Aún no tengo una recomendación que explicar. Pregúntame qué hacer esta noche primero.",
+    "navi.experience.no_best":
+      "No encontré una experiencia segura que quepa en tu dinero disponible sin tocar fondos protegidos.",
+    "navi.experience.explain": "Por qué {name}:",
+    "navi.experience.no_matched_tags": "ninguna",
+    "navi.experience.protected_yes": "sí",
+    "navi.experience.protected_no": "no",
     "pockets.title": "Bolsillos",
     "pockets.locked": "Bloqueado",
     "pockets.open": "Abierto",
@@ -586,6 +646,36 @@ const dictionaries = {
       "Não consegui conectar ao NAVI agora. Tente novamente.{detail}",
     "navi.azure_fallback":
       "Pronto. Em que mais posso ajudar com seu orçamento?",
+    "navi.experience.no_profile":
+      "Você ainda não tem um perfil de Cultural DNA. Crie um para eu usar sinais do Qloo. Enquanto isso, aqui vão ideias genéricas — generic, not from Qloo.",
+    "navi.experience.no_consent":
+      "O consentimento de Cultural DNA está desligado, então não vou consultar o Qloo. Ative o consentimento no seu perfil cultural para combinações personalizadas. Enquanto isso, aqui vão ideias genéricas — generic, not from Qloo.",
+    "navi.experience.qloo_unavailable":
+      "O Qloo está indisponível agora ({reason}). Aqui vão ideias genéricas — generic, not from Qloo.",
+    "navi.experience.qloo_demo":
+      "O Qloo está em modo demo (sem chave ao vivo). Estas ideias são generic, not from Qloo.",
+    "navi.experience.recommend":
+      "Experimente {name}{place}.\nVoluntrip Value Score: {score}/100.",
+    "navi.experience.estimated_cost":
+      "Custo estimado: {cost} por pessoa (estimativa, não é um preço verificado).",
+    "navi.experience.from_qloo":
+      "From Qloo\nTags correspondentes: {tags}\nPosição: {rank}\nSource: {source}",
+    "navi.experience.from_voluntrip":
+      "From Voluntrip\nCusto estimado: {cost} por pessoa (estimativa, não é um preço verificado).\nGasto diário seguro: {dailyBefore} → {dailyAfter}.\nDinheiro protegido intacto: {protected}.\nRunway: {runway}.",
+    "navi.experience.alternative":
+      "Alternativa mais barata com bom encaixe cultural: {name} (estimado {cost} por pessoa).",
+    "navi.experience.no_alternative":
+      "Não tenho uma alternativa mais barata com culturalFit de 60 ou mais.",
+    "navi.experience.simulate_hint":
+      "Se quiser ir, posso simular este custo estimado primeiro. Nada é registrado até você Confirmar.",
+    "navi.experience.no_last":
+      "Ainda não tenho uma recomendação para explicar. Pergunte o que fazer esta noite primeiro.",
+    "navi.experience.no_best":
+      "Não encontrei uma experiência segura que caiba no seu dinheiro disponível sem tocar fundos protegidos.",
+    "navi.experience.explain": "Por que {name}:",
+    "navi.experience.no_matched_tags": "nenhuma",
+    "navi.experience.protected_yes": "sim",
+    "navi.experience.protected_no": "não",
     "pockets.title": "Bolsos",
     "pockets.locked": "Bloqueado",
     "pockets.open": "Aberto",

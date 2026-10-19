@@ -3,6 +3,7 @@ import type { AgentMessage } from "@/types";
 import type { NaviResponse } from "@/lib/agent/types";
 import type { AgentContext } from "@/lib/agent/tools";
 import { runLocalAsk } from "@/lib/agent/localAsk";
+import { searchQlooPlaces } from "@/lib/qloo/client";
 import {
   callAzureOpenAI,
   generateInsight,
@@ -33,19 +34,21 @@ export async function POST(request: Request) {
       case "ask": {
         const text = body.text || "";
         const messages = body.messages ?? [];
-        const tripContext = body.tripContext ?? {
+        const tripContext: AgentContext = {
           trip: null,
           pockets: [],
           transactions: [],
           goals: [],
           locale: "en",
+          ...body.tripContext,
+          searchPlaces: searchQlooPlaces,
         };
 
         let result: NaviResponse;
 
         if (isServerMockMode()) {
           // Heuristic fallback only — not a full LLM. Set MOCK_AI=false + Azure for real answers.
-          result = runLocalAsk(text, tripContext);
+          result = await runLocalAsk(text, tripContext);
         } else {
           try {
             result = await callAzureOpenAI({

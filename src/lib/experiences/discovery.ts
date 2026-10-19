@@ -1,5 +1,4 @@
 import { toQlooSignalTags } from "@/lib/culture/tagMap";
-import { searchQlooPlaces } from "@/lib/qloo/client";
 import { QLOO_MAX_TAGS } from "@/lib/qloo/types";
 import type { QlooPlace, QlooPlaceQuery, QlooResult } from "@/lib/qloo/types";
 import type { DiscoveryResult } from "./types";
@@ -23,7 +22,8 @@ export interface DiscoverExperiencesInput {
 }
 
 export interface DiscoverExperiencesOptions {
-  searchPlaces?: (query: QlooPlaceQuery) => Promise<QlooResult>;
+  /** Required so callers choose API-proxy (browser) vs server client. Never default to the key-holding client. */
+  searchPlaces: (query: QlooPlaceQuery) => Promise<QlooResult>;
   now?: Date;
 }
 
@@ -33,14 +33,13 @@ export interface DiscoverExperiencesOptions {
  */
 export async function discoverExperiences(
   input: DiscoverExperiencesInput,
-  options: DiscoverExperiencesOptions = {}
+  options: DiscoverExperiencesOptions
 ): Promise<DiscoveryResult> {
   const tags = input.consentGranted
     ? toQlooSignalTags(input.profileTagIds).slice(0, QLOO_MAX_TAGS)
     : [];
 
-  const search = options.searchPlaces ?? searchQlooPlaces;
-  const result = await search({
+  const result = await options.searchPlaces({
     city: input.city,
     tags,
     take: 10,

@@ -381,13 +381,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   askNavi: async (text) => {
-    const { trip, pockets, transactions, goals, locale } = get();
+    const { trip, pockets, transactions, goals, locale, culturalProfile } = get();
     const result = await naviAgent.ask(text, {
       trip,
       pockets,
       transactions,
       goals,
       locale,
+      culturalProfile,
     });
     const userMsg = {
       id: createId(),
