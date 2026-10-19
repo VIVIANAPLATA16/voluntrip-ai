@@ -4,7 +4,7 @@ import { runLocalAsk } from "./localAsk";
 import { buildConnectionErrorResponse } from "./responseBuilder";
 import type { AgentContext } from "./tools";
 import { AgentMemory } from "./memory";
-import type { NaviResponse } from "./types";
+import type { ExperienceRecommendationPayload, NaviResponse } from "./types";
 
 export type { NaviResponse } from "./types";
 
@@ -14,6 +14,7 @@ function shouldUseRemoteNavi(): boolean {
 
 export class NaviAgent {
   memory = new AgentMemory();
+  lastRecommendation: ExperienceRecommendationPayload | null = null;
 
   async ask(userText: string, ctx: AgentContext): Promise<NaviResponse> {
     const locale = ctx.locale;
@@ -26,14 +27,26 @@ export class NaviAgent {
     };
     this.memory.add(userMsg);
 
+    const ctxWithSession: AgentContext = {
+      ...ctx,
+      lastRecommendation: ctx.lastRecommendation ?? this.lastRecommendation,
+    };
+
     if (shouldUseRemoteNavi()) {
-      return this.askRemote(userText, ctx, locale);
+      return this.askRemote(userText, ctxWithSession, locale);
     }
 
     // Client-side mock: heuristic only. Full conversational NAVI needs NEXT_PUBLIC_MOCK_AI=false + Azure.
-    const result = runLocalAsk(userText, ctx);
+    const result = await runLocalAsk(userText, ctxWithSession);
+    this.rememberRecommendation(result);
     this.memory.add(result.message);
     return result;
+  }
+
+  private rememberRecommendation(result: NaviResponse) {
+    if (result.experienceRecommendation !== undefined) {
+      this.lastRecommendation = result.experienceRecommendation;
+    }
   }
 
   private async askRemote(
@@ -49,7 +62,15 @@ export class NaviAgent {
           action: "ask",
           text: userText,
           messages: this.memory.all(),
-          tripContext: ctx,
+          tripContext: {
+            trip: ctx.trip,
+            pockets: ctx.pockets,
+            transactions: ctx.transactions,
+            goals: ctx.goals,
+            locale: ctx.locale,
+            culturalProfile: ctx.culturalProfile ?? null,
+            lastRecommendation: ctx.lastRecommendation ?? this.lastRecommendation,
+          },
         }),
       });
 
@@ -63,12 +84,15 @@ export class NaviAgent {
       }
 
       this.memory.add(data.message);
-      return {
+      const result: NaviResponse = {
         message: data.message,
         simulation: data.simulation,
         pendingTransaction: data.pendingTransaction,
         mutations: data.mutations ?? [],
+        experienceRecommendation: data.experienceRecommendation,
       };
+      this.rememberRecommendation(result);
+      return result;
     } catch (err) {
       const detail = err instanceof Error ? err.message : undefined;
       const errorResponse = buildConnectionErrorResponse(locale, detail);

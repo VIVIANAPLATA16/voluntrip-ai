@@ -20,8 +20,8 @@ const trip: Trip = {
 };
 
 describe("runLocalAsk locale", () => {
-  it("responds in Spanish when profile locale is es, even if user writes in English", () => {
-    const result = runLocalAsk("How much can I spend today?", {
+  it("responds in Spanish when profile locale is es, even if user writes in English", async () => {
+    const result = await runLocalAsk("How much can I spend today?", {
       trip,
       pockets: [],
       transactions: [],
@@ -34,8 +34,8 @@ describe("runLocalAsk locale", () => {
     expect(result.message.content).not.toMatch(/You can safely spend/i);
   });
 
-  it("responds in Portuguese when profile locale is pt", () => {
-    const result = runLocalAsk("How much can I spend today?", {
+  it("responds in Portuguese when profile locale is pt", async () => {
+    const result = await runLocalAsk("How much can I spend today?", {
       trip,
       pockets: [],
       transactions: [],
@@ -46,8 +46,8 @@ describe("runLocalAsk locale", () => {
     expect(result.message.content).toMatch(/Você pode gastar com segurança/i);
   });
 
-  it("returns mock limitation message for unmatched general questions", () => {
-    const result = runLocalAsk(
+  it("returns mock limitation message for unmatched general questions", async () => {
+    const result = await runLocalAsk(
       "What documents do I need to volunteer in Costa Rica?",
       {
         trip,

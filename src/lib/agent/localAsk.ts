@@ -1,8 +1,10 @@
 import type { AgentToolCall, MoneyRunwayResult, PurchaseSimulation } from "@/types";
 import { formatMoney } from "@/lib/constants";
 import { t, type Locale } from "@/lib/i18n/dictionaries";
-import type { NaviResponse } from "./types";
+import type { ExperienceRecommendationPayload, NaviResponse } from "./types";
 import { buildNaviResponse } from "./responseBuilder";
+import { formatExperienceToolReply } from "./experienceReply";
+import { executeToolAsync, isCulturalTool } from "./experienceTools";
 import type { AgentContext, ToolName } from "./tools";
 import { executeTool, makeToolCall } from "./tools";
 
@@ -53,17 +55,22 @@ export function parseAmountCurrency(text: string): { amount: number; currency: s
   return null;
 }
 
-function detectIntent(text: string): {
-  intent:
-    | "afford"
-    | "expense"
-    | "budget"
-    | "analyze"
-    | "protect"
-    | "goal"
-    | "runway"
-    | "convert"
-    | "unknown";
+export type LocalAskIntent =
+  | "afford"
+  | "expense"
+  | "budget"
+  | "analyze"
+  | "protect"
+  | "goal"
+  | "runway"
+  | "convert"
+  | "recommend"
+  | "why"
+  | "alternative"
+  | "unknown";
+
+export function detectLocalAskIntent(text: string): {
+  intent: LocalAskIntent;
   tools: ToolName[];
 } {
   const lower = text.toLowerCase();
@@ -73,6 +80,27 @@ function detectIntent(text: string): {
     )
   ) {
     return { intent: "afford", tools: ["simulatePurchase", "getDailyBudget"] };
+  }
+  if (
+    /better option|otra opci[oó]n|opci[oó]n m[aá]s barata|find me a better|alternativa|outra op[cç][aã]o|op[cç][aã]o melhor/i.test(
+      lower
+    )
+  ) {
+    return { intent: "alternative", tools: ["findBetterOption"] };
+  }
+  if (
+    /why this|why that|\bwhy\??$|por qu[eé]( esto| esta| eso)?|\bpor qu[eé]\b|porque (esto|essa)|por que (isso|esta)|explica(r)? (esto|isso|this)/i.test(
+      lower
+    )
+  ) {
+    return { intent: "why", tools: ["explainRecommendation"] };
+  }
+  if (
+    /tonight|esta noche|hoje\s+(à|a)\s+noite|esta noite|go out|salir|quero sair|recommend|recomiend|sugier|qu[eé] hago|o que fazer/i.test(
+      lower
+    )
+  ) {
+    return { intent: "recommend", tools: ["recommendExperience"] };
   }
   if (
     /spent|gaste|gastei|register|expense|lunch|dinner|taxi|coffee|bought/i.test(lower)
@@ -98,6 +126,10 @@ function detectIntent(text: string): {
     return { intent: "convert", tools: ["convertCurrency"] };
   }
   return { intent: "unknown", tools: [] };
+}
+
+function detectIntent(text: string) {
+  return detectLocalAskIntent(text);
 }
 
 function extractConcept(text: string): string {
@@ -252,8 +284,42 @@ function craftReply(
   });
 }
 
+async function runCulturalAsk(
+  userText: string,
+  ctx: AgentContext,
+  intent: LocalAskIntent,
+  tool: ToolName
+): Promise<NaviResponse> {
+  const args: Record<string, unknown> = {};
+  if (tool === "recommendExperience") {
+    args.city = ctx.trip?.city ?? "";
+    args.intent = intent === "recommend" ? "tonight" : "general";
+  }
+
+  const result = await executeToolAsync(tool, args, ctx);
+  const executedTools = [{ name: tool, args, result }];
+  const content = formatExperienceToolReply(
+    ctx.locale,
+    tool as "recommendExperience" | "explainRecommendation" | "findBetterOption",
+    result
+  );
+
+  const response = buildNaviResponse({
+    userText,
+    assistantContent: content,
+    executedTools,
+    locale: ctx.locale,
+  });
+
+  if (tool === "recommendExperience" && result.ok) {
+    response.experienceRecommendation = result.data as ExperienceRecommendationPayload;
+  }
+
+  return response;
+}
+
 /** Local heuristic NAVI — fallback when MOCK_AI=true or Azure is unavailable. Not a full LLM. */
-export function runLocalAsk(userText: string, ctx: AgentContext): NaviResponse {
+export async function runLocalAsk(userText: string, ctx: AgentContext): Promise<NaviResponse> {
   const locale = ctx.locale;
   const { intent, tools } = detectIntent(userText);
 
@@ -264,6 +330,10 @@ export function runLocalAsk(userText: string, ctx: AgentContext): NaviResponse {
       executedTools: [],
       locale,
     });
+  }
+
+  if (isCulturalTool(tools[0])) {
+    return runCulturalAsk(userText, ctx, intent, tools[0]);
   }
 
   const parsed = parseAmountCurrency(userText);

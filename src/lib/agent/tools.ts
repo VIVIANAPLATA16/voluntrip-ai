@@ -1,6 +1,7 @@
 import type {
   AgentToolCall,
   BudgetSnapshot,
+  CulturalProfile,
   CurrencyCode,
   Goal,
   LocaleCode,
@@ -10,6 +11,8 @@ import type {
   Transaction,
   Trip,
 } from "@/types";
+import type { QlooPlaceQuery, QlooResult } from "@/lib/qloo/types";
+import type { ExperienceRecommendationPayload } from "./types";
 import {
   buildBudgetSnapshot,
   calculateMoneyRunway,
@@ -27,6 +30,10 @@ export interface AgentContext {
   goals: Goal[];
   locale: LocaleCode;
   now?: Date;
+  culturalProfile?: CulturalProfile | null;
+  lastRecommendation?: ExperienceRecommendationPayload | null;
+  /** Server injects the Qloo client; the browser uses POST /api/qloo instead. */
+  searchPlaces?: (query: QlooPlaceQuery) => Promise<QlooResult>;
 }
 
 export type ToolName =
@@ -45,7 +52,10 @@ export type ToolName =
   | "createGoal"
   | "simulatePurchase"
   | "convertCurrency"
-  | "generateFinancialInsight";
+  | "generateFinancialInsight"
+  | "recommendExperience"
+  | "explainRecommendation"
+  | "findBetterOption";
 
 export interface ToolResult {
   ok: boolean;
@@ -234,6 +244,34 @@ export const toolDefinitions: ToolDefinition[] = [
     description: "Generate a proactive financial insight for the traveler",
     parameters: emptyParams,
   },
+  {
+    name: "recommendExperience",
+    description:
+      "Recommend a going-out experience using Cultural DNA, budget safety, and trip context. Never records a purchase.",
+    parameters: {
+      type: "object",
+      properties: {
+        city: { type: "string", description: "City to search (defaults to the active trip city)" },
+        intent: {
+          type: "string",
+          enum: ["tonight", "general"],
+          description: "tonight boosts nightlife/evening context fit",
+        },
+      },
+    },
+  },
+  {
+    name: "explainRecommendation",
+    description:
+      "Explain the last experience recommendation, splitting From Qloo vs From Voluntrip evidence.",
+    parameters: emptyParams,
+  },
+  {
+    name: "findBetterOption",
+    description:
+      "Return a cheaper alternative with culturalFit >= 60, or say none exists. Never records a purchase.",
+    parameters: emptyParams,
+  },
 ];
 
 /** OpenAI / Azure function-calling tool definitions */
@@ -419,6 +457,14 @@ export function executeTool(
         return {
           ok: true,
           data: { acknowledged: true, args },
+          mutation: { type: "none" },
+        };
+      case "recommendExperience":
+      case "explainRecommendation":
+      case "findBetterOption":
+        return {
+          ok: false,
+          error: `${name} must be executed asynchronously`,
           mutation: { type: "none" },
         };
       default:

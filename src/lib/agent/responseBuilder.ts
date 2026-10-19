@@ -86,10 +86,16 @@ export function tripContextSummary(ctx: AgentContext): string {
     return `\n\nNo active trip.\nUser locale: ${ctx.locale}.`;
   }
   const t = ctx.trip;
+  const consent = ctx.culturalProfile?.consent.granted
+    ? "granted"
+    : ctx.culturalProfile
+      ? "denied"
+      : "none";
   return `\n\nActive trip: ${t.city}, ${t.country} (${t.flag}).
 Base currency: ${t.baseCurrency}. Local currency: ${t.localCurrency}.
 Trip dates: ${t.startDate} → ${t.endDate}.
 Initial budget: ${t.initialBudget} ${t.baseCurrency}.
 Pockets: ${ctx.pockets.length}. Transactions: ${ctx.transactions.length}. Goals: ${ctx.goals.length}.
+Cultural DNA consent: ${consent}.
 User locale: ${ctx.locale}.`;
 }
