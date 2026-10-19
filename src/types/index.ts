@@ -41,6 +41,32 @@ export interface Profile {
   updatedAt: string;
 }
 
+/**
+ * Operational preference like — not a diagnosis.
+ * `qlooTagId` stays empty until a later phase verifies it against Qloo.
+ */
+export interface CulturalLike {
+  label: string;
+  qlooTagId?: string;
+}
+
+/**
+ * Local Cultural DNA. Never store name, email, or device IDs here.
+ * id is always `"default"` (one profile per device / local database).
+ */
+export interface CulturalProfile {
+  id: "default";
+  consent: {
+    granted: boolean;
+    grantedAt: string | null;
+  };
+  music: CulturalLike[];
+  food: CulturalLike[];
+  entertainment: CulturalLike[];
+  activities: CulturalLike[];
+  updatedAt: string;
+}
+
 export interface VolunteerSetup {
   hostName?: string;
   includedBenefits: HostBenefit[];
