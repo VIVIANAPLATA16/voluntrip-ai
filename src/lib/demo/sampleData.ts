@@ -7,6 +7,7 @@ import type {
   Trip,
 } from "@/types";
 import { createTransaction } from "@/lib/finance/transactions";
+import { endDateWithRemainingDays, isoDateLocal } from "./remainingDays";
 
 const now = new Date();
 const start = new Date(now);
@@ -193,4 +194,88 @@ export function createDemoData() {
   ];
 
   return { profile, trip, pockets, transactions, goals, insights };
+}
+
+export function createMedellinDemoData(now: Date = new Date()) {
+  const tripId = "demo-trip-medellin";
+  const profileId = "demo-profile-medellin";
+  const startDate = isoDateLocal(now);
+  const endDate = endDateWithRemainingDays(12, now);
+
+  const profile: Profile = {
+    id: profileId,
+    displayName: "Traveler",
+    locale: "en",
+    preferredCurrency: "USD",
+    onboardingComplete: true,
+    avatarHue: 168,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+  };
+
+  const trip: Trip = {
+    id: tripId,
+    destination: "Medellín, Colombia",
+    city: "Medellín",
+    country: "Colombia",
+    countryCode: "CO",
+    flag: "🇨🇴",
+    baseCurrency: "USD",
+    localCurrency: "COP",
+    startDate,
+    endDate,
+    initialBudget: 978,
+    hostName: "Casa Voluntrip",
+    includedBenefits: ["accommodation", "breakfast"],
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+  };
+
+  const pockets: Pocket[] = [
+    {
+      id: "pocket-med-emergency",
+      tripId,
+      name: "Emergency",
+      category: "emergency",
+      balance: 300,
+      allocated: 300,
+      protected: true,
+      icon: "shield",
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    },
+    {
+      id: "pocket-med-flight",
+      tripId,
+      name: "Return Flight",
+      category: "return_flight",
+      balance: 250,
+      allocated: 250,
+      protected: true,
+      icon: "plane",
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    },
+  ];
+
+  const insights: AIInsight[] = [
+    {
+      id: "insight-med-1",
+      tripId,
+      type: "info",
+      title: "Medellín tonight",
+      message:
+        "You have $428 real available and 12 days left. Ask NAVI what to do tonight.",
+      createdAt: now.toISOString(),
+    },
+  ];
+
+  return {
+    profile,
+    trip,
+    pockets,
+    transactions: [] as Transaction[],
+    goals: [] as Goal[],
+    insights,
+  };
 }
