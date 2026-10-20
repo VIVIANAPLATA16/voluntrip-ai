@@ -7,7 +7,6 @@ import { Card } from "@/components/ui/Card";
 import { naviAgent } from "@/lib/agent/agent";
 import { executeToolAsync } from "@/lib/agent/experienceTools";
 import type { ExperienceRecommendationPayload } from "@/lib/agent/types";
-import { GENERIC_BASELINE_LABEL } from "@/lib/experiences";
 import { t } from "@/lib/i18n/dictionaries";
 import { useAppStore } from "@/store/appStore";
 import { ExperienceCard } from "./ExperienceCard";
@@ -23,10 +22,12 @@ export function TonightMatch() {
   const transactions = useAppStore((s) => s.transactions);
   const goals = useAppStore((s) => s.goals);
   const culturalProfile = useAppStore((s) => s.culturalProfile);
-  const askNavi = useAppStore((s) => s.askNavi);
+  const askNavi = useAppStore(function (s) {
+    return s.askNavi;
+  });
 
-  const [payload, setPayload] = useState<ExperienceRecommendationPayload | null>(null);
-  const [state, setState] = useState<ViewState>("empty");
+  const [payload, setPayload] = useState(null as ExperienceRecommendationPayload | null);
+  const [state, setState] = useState("empty" as ViewState);
   const [whyOpen, setWhyOpen] = useState(false);
 
   const consented = Boolean(culturalProfile?.consent.granted);
@@ -101,9 +102,14 @@ export function TonightMatch() {
       {state === "error" && (
         <Card className="min-w-0 space-y-2 overflow-hidden">
           <p className="text-sm font-medium break-words">{t(locale, "tonight.error")}</p>
-          <p className="text-xs text-ink-faint break-words">{GENERIC_BASELINE_LABEL}</p>
+          <p className="text-xs text-ink-faint break-words">
+            {t(locale, "experience.generic_not_qloo")}
+          </p>
           {payload?.best ? (
-            <ExperienceCard experience={payload.best} provenanceLabel={GENERIC_BASELINE_LABEL} />
+            <ExperienceCard
+              experience={payload.best}
+              provenanceLabel={t(locale, "experience.generic_not_qloo")}
+            />
           ) : null}
         </Card>
       )}
@@ -111,7 +117,10 @@ export function TonightMatch() {
       {state === "demo" && payload?.best && (
         <div className="min-w-0 space-y-2">
           <p className="text-xs text-ink-faint break-words">{t(locale, "tonight.demo")}</p>
-          <ExperienceCard experience={payload.best} provenanceLabel={GENERIC_BASELINE_LABEL} />
+          <ExperienceCard
+            experience={payload.best}
+            provenanceLabel={t(locale, "experience.generic_not_qloo")}
+          />
         </div>
       )}
 
