@@ -74,5 +74,6 @@ export function rankMedellinBaseline(
     source: baseline.source,
     queriedAt: baseline.queriedAt,
     qlooTotal: baseline.qlooTotal,
+    signals: [],
   });
 }
