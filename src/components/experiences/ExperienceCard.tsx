@@ -14,8 +14,16 @@ export function ExperienceCard({
   experience: Experience;
   provenanceLabel?: string;
 }) {
-  const locale = useAppStore((s) => s.locale);
+  const locale = useAppStore(function (s) {
+    return s.locale;
+  });
   const source = experience.whyQloo.source;
+  const sourceKey =
+    source === "qloo"
+      ? "experience.source_qloo"
+      : source === "demo"
+        ? "experience.source_demo"
+        : "experience.source_unavailable";
 
   return (
     <Card padding="sm" className="min-w-0 max-w-full space-y-3 overflow-hidden">
@@ -29,7 +37,7 @@ export function ExperienceCard({
           ) : null}
         </div>
         <Badge variant={source === "qloo" ? "accent" : source === "demo" ? "warning" : "danger"}>
-          {source}
+          {t(locale, sourceKey)}
         </Badge>
       </div>
 
