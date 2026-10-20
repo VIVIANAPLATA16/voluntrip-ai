@@ -16,6 +16,8 @@ import Link from "next/link";
 import { generateInsight } from "@/lib/ai/azureOpenAI";
 import type { AIInsight } from "@/types";
 import { WifiOff } from "lucide-react";
+import { CulturalDnaCard } from "@/components/culture/CulturalDnaCard";
+import { TonightMatch } from "@/components/experiences/TonightMatch";
 
 export function HomeDashboard() {
   const trip = useAppStore((s) => s.trip);
@@ -66,7 +68,7 @@ export function HomeDashboard() {
   const displayInsight = liveInsight || insights[0];
 
   return (
-    <div className="space-y-5 pb-4">
+    <div className="min-w-0 max-w-full space-y-5 pb-4 overflow-x-hidden">
       <header className="flex items-center justify-between gap-3">
         <Logo size="sm" href="/app" />
         <div className="flex items-center gap-2">
@@ -99,6 +101,9 @@ export function HomeDashboard() {
         weekly={snapshot.weeklySafeSpend}
         status={snapshot.status}
       />
+
+      <TonightMatch />
+      <CulturalDnaCard />
 
       <div className="rounded-card border border-border bg-surface/70 p-4">
         <TripProgress trip={trip} />

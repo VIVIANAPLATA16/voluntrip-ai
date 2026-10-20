@@ -21,7 +21,7 @@ import {
   getCulturalProfile as readCulturalProfile,
   saveCulturalProfile as persistCulturalProfile,
 } from "@/lib/culture/profile";
-import { createDemoData } from "@/lib/demo/sampleData";
+import { createDemoData, createMedellinDemoData } from "@/lib/demo/sampleData";
 import { createTransaction } from "@/lib/finance/transactions";
 import { naviAgent } from "@/lib/agent/agent";
 import { buildBudgetSnapshot, calculateMoneyRunway } from "@/lib/finance";
@@ -68,6 +68,7 @@ interface AppStore {
   updateOnboarding: (patch: Partial<OnboardingDraft>) => void;
   completeOnboarding: () => Promise<void>;
   loadDemo: () => Promise<void>;
+  loadMedellinDemo: () => Promise<void>;
   clearDemo: () => Promise<void>;
   addTransaction: (tx: Transaction) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
@@ -313,6 +314,23 @@ export const useAppStore = create<AppStore>((set, get) => ({
   loadDemo: async () => {
     await db.clearAllData();
     const demo = createDemoData();
+    await persistAll(demo);
+    set({
+      profile: demo.profile,
+      trip: demo.trip,
+      pockets: demo.pockets,
+      transactions: demo.transactions,
+      goals: demo.goals,
+      insights: demo.insights,
+      messages: [],
+      culturalProfile: null,
+      locale: demo.profile.locale,
+    });
+  },
+
+  loadMedellinDemo: async () => {
+    await db.clearAllData();
+    const demo = createMedellinDemoData();
     await persistAll(demo);
     set({
       profile: demo.profile,

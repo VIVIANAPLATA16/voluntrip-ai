@@ -60,7 +60,9 @@ export function BottomSheet({
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border md:hidden" />
             <div className="flex items-center justify-between gap-3 mb-4">
               {title ? (
-                <h2 className="font-display text-lg font-semibold text-ink">{title}</h2>
+                <h2 className="min-w-0 font-display text-lg font-semibold text-ink break-words">
+                  {title}
+                </h2>
               ) : (
                 <span />
               )}
