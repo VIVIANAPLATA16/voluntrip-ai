@@ -111,6 +111,7 @@ export async function recommendExperience(
     source: "qloo",
     queriedAt: discovered.queriedAt,
     qlooTotal: discovered.qlooTotal,
+    signals: discovered.signals,
   });
 
   return noMutation({

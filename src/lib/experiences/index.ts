@@ -25,6 +25,10 @@ export {
 } from "./evaluate";
 export { rankExperiences, type RankExperiencesInput } from "./rank";
 export {
+  qlooEvidenceForSheet,
+  type QlooEvidenceForSheet,
+} from "./whyQlooEvidence";
+export {
   BASELINE_MEDELLIN_PLACES,
   GENERIC_BASELINE_LABEL,
   getMedellinBaseline,

@@ -208,6 +208,7 @@ describe("discoverExperiences", () => {
     expect(result.source).toBe("qloo");
     expect(result.candidates.map((c) => c.id)).toEqual(["club"]);
     expect(result.qlooTotal).toBe(3);
+    expect(result.signals).toEqual(["salsa", "vida nocturna"]);
   });
 
   it("does not send profile tags without consent", async () => {
@@ -240,6 +241,7 @@ describe("discoverExperiences", () => {
     );
     expect(demo.source).toBe("demo");
     expect(demo.candidates[0]?.id).toBe("demo-1");
+    expect(demo.signals).toEqual([]);
 
     const unavailable = await discoverExperiences(
       { city: "Medellín", profileTagIds: PROFILE_TAGS, consentGranted: true },
@@ -254,6 +256,7 @@ describe("discoverExperiences", () => {
     );
     expect(unavailable.source).toBe("unavailable");
     expect(unavailable.candidates).toEqual([]);
+    expect(unavailable.signals).toEqual([]);
   });
 });
 
@@ -411,13 +414,27 @@ describe("ranking and Voluntrip Value Score", () => {
   });
 
   it("separates Qloo evidence from Voluntrip evidence", () => {
-    const ranked = rankOn([salsaNight]);
+    const ranked = rankExperiences({
+      candidates: [salsaNight],
+      source: "qloo",
+      queriedAt: now.toISOString(),
+      qlooTotal: 10,
+      signals: ["salsa", "vida nocturna"],
+      profileTagIds: PROFILE_TAGS,
+      intent: "tonight",
+      trip,
+      transactions,
+      pockets,
+      now,
+    });
     const best = ranked.best!;
     expect(best.whyQloo).toMatchObject({
       matchedTags: expect.arrayContaining([SALSA, NIGHTLIFE]),
       rank: 1,
       source: "qloo",
       queriedAt: now.toISOString(),
+      signals: ["salsa", "vida nocturna"],
+      totalResults: 10,
     });
     expect(best.whyVoluntrip.estimatedCost.isEstimate).toBe(true);
     expect(best.whyVoluntrip.protectedMoneyUntouched).toBe(true);

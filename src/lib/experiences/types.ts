@@ -11,6 +11,10 @@ export interface WhyQloo {
   rank: number;
   source: ExperienceSource;
   queriedAt: string;
+  /** Cultural DNA labels sent as Qloo signals for this query. */
+  signals: string[];
+  /** How many place candidates Qloo returned (before hotel filter). */
+  totalResults: number;
 }
 
 export interface WhyVoluntrip {
@@ -54,4 +58,5 @@ export interface DiscoveryResult {
   queriedAt: string;
   candidates: QlooPlace[];
   qlooTotal: number;
+  signals: string[];
 }

@@ -1,4 +1,4 @@
-import { toQlooSignalTags } from "@/lib/culture/tagMap";
+import { allCulturalDnaTags, toQlooSignalTags } from "@/lib/culture/tagMap";
 import { QLOO_MAX_TAGS } from "@/lib/qloo/types";
 import type { QlooPlace, QlooPlaceQuery, QlooResult } from "@/lib/qloo/types";
 import type { DiscoveryResult } from "./types";
@@ -38,6 +38,7 @@ export async function discoverExperiences(
   const tags = input.consentGranted
     ? toQlooSignalTags(input.profileTagIds).slice(0, QLOO_MAX_TAGS)
     : [];
+  const signals = signalLabels(tags);
 
   const result = await options.searchPlaces({
     city: input.city,
@@ -54,6 +55,7 @@ export async function discoverExperiences(
       queriedAt,
       candidates,
       qlooTotal: result.places.length,
+      signals,
     };
   }
 
@@ -64,6 +66,7 @@ export async function discoverExperiences(
       queriedAt,
       candidates,
       qlooTotal: result.places.length,
+      signals: [],
     };
   }
 
@@ -73,5 +76,19 @@ export async function discoverExperiences(
     queriedAt,
     candidates: [],
     qlooTotal: 0,
+    signals: [],
   };
+}
+
+function signalLabels(ids: readonly string[]): string[] {
+  const catalog = allCulturalDnaTags();
+  const labels: string[] = [];
+  const seen = new Set<string>();
+  for (const id of ids) {
+    const label = catalog.find((tag) => tag.qlooTagId === id)?.label ?? id;
+    if (seen.has(label)) continue;
+    seen.add(label);
+    labels.push(label);
+  }
+  return labels;
 }
