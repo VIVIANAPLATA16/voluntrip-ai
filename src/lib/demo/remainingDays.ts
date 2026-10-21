@@ -13,6 +13,34 @@ export function demoBudgetNow(now: Date = new Date()): Date {
   return midday;
 }
 
+function parseNow(value: unknown): Date | undefined {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return undefined;
+}
+
+/** Dashboard clock: canned Medellín/Singapore demos use local noon; real trips use `now`. */
+export function budgetNowForTrip(trip: { id: string } | null | undefined, now: Date = new Date()): Date {
+  if (trip && DEMO_REMAINING_DAYS[trip.id]) return demoBudgetNow(now);
+  return now;
+}
+
+/**
+ * Prefer a client-provided instant (ISO from JSON) so Azure uses the same clock as the dashboard.
+ * Do not shift hours again — the client already applied demoBudgetNow when needed.
+ */
+export function resolveBudgetNow(
+  trip: { id: string } | null | undefined,
+  provided?: unknown
+): Date {
+  const parsed = parseNow(provided);
+  if (parsed) return parsed;
+  return budgetNowForTrip(trip);
+}
+
 export function isoDateLocal(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");

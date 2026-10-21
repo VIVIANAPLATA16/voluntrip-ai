@@ -21,7 +21,12 @@ import {
   getCulturalProfile as readCulturalProfile,
   saveCulturalProfile as persistCulturalProfile,
 } from "@/lib/culture/profile";
-import { DEMO_REMAINING_DAYS, demoBudgetNow, refreshDemoTripDates } from "@/lib/demo/remainingDays";
+import {
+  DEMO_REMAINING_DAYS,
+  budgetNowForTrip,
+  demoBudgetNow,
+  refreshDemoTripDates,
+} from "@/lib/demo/remainingDays";
 import { createDemoData, createMedellinDemoData, createSingaporeDemoData } from "@/lib/demo/sampleData";
 import { createTransaction } from "@/lib/finance/transactions";
 import { naviAgent } from "@/lib/agent/agent";
@@ -429,6 +434,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       transactions,
       goals,
       locale,
+      now: budgetNowForTrip(trip),
       culturalProfile,
     });
     const userMsg = {

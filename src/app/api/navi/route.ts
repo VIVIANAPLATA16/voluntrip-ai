@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import type { AgentMessage } from "@/types";
 import type { NaviResponse } from "@/lib/agent/types";
 import type { AgentContext } from "@/lib/agent/tools";
+import { attachAffordSimulation } from "@/lib/agent/affordSimulation";
 import { runLocalAsk } from "@/lib/agent/localAsk";
+import { resolveBudgetNow } from "@/lib/demo/remainingDays";
 import { searchQlooPlaces } from "@/lib/qloo/client";
 import {
   callAzureOpenAI,
@@ -34,13 +36,15 @@ export async function POST(request: Request) {
       case "ask": {
         const text = body.text || "";
         const messages = body.messages ?? [];
+        const incoming = body.tripContext;
         const tripContext: AgentContext = {
           trip: null,
           pockets: [],
           transactions: [],
           goals: [],
           locale: "en",
-          ...body.tripContext,
+          ...incoming,
+          now: resolveBudgetNow(incoming?.trip, incoming?.now),
           searchPlaces: searchQlooPlaces,
         };
 
@@ -63,7 +67,7 @@ export async function POST(request: Request) {
           }
         }
 
-        return NextResponse.json(result);
+        return NextResponse.json(attachAffordSimulation(text, tripContext, result));
       }
       case "process": {
         const result = await processFinancialInput(body.text || "");

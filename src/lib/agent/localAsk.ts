@@ -230,8 +230,10 @@ function craftReply(
     return t(locale, "navi.simulation_body", {
       availableBefore: formatMoney(simulation.availableBefore, base, { showCode: true }),
       dailyBefore: formatMoney(simulation.dailyBudgetBefore, base),
+      weeklyBefore: formatMoney(simulation.weeklyBudgetBefore, base),
       availableAfter: formatMoney(simulation.availableAfter, base, { showCode: true }),
       dailyAfter: formatMoney(simulation.dailyBudgetAfter, base),
+      weeklyAfter: formatMoney(simulation.weeklyBudgetAfter, base),
       impact: localizeSimulationImpact(simulation, locale, base),
     });
   }

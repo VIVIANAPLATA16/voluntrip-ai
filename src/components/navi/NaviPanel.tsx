@@ -11,6 +11,7 @@ import { formatMoney } from "@/lib/constants";
 import { Camera, Mic, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { blobToAzureWav } from "@/lib/audio/wavEncode";
+import { parseNaviBold } from "@/lib/agent/naviText";
 
 const QUICK: Array<{ labelKey: TranslationKey; promptKey: TranslationKey }> = [
   { labelKey: "navi.quick.tonight", promptKey: "navi.quick_prompt.tonight" },
@@ -356,7 +357,16 @@ export function NaviPanel() {
                 : "mr-auto bg-surface border border-border text-ink"
             )}
           >
-            {m.content}
+            {parseNaviBold(m.content).map(function (part, index) {
+              if (part.bold) {
+                return (
+                  <strong key={index} className="font-semibold">
+                    {part.text}
+                  </strong>
+                );
+              }
+              return <span key={index}>{part.text}</span>;
+            })}
           </div>
         ))}
 
@@ -392,6 +402,14 @@ export function NaviPanel() {
               <div>
                 <p className="text-xs text-ink-faint">{t(locale, "navi.sim_daily_after")}</p>
                 <p>{formatMoney(pendingSimulation.dailyBudgetAfter, trip?.baseCurrency || "USD")}</p>
+              </div>
+              <div>
+                <p className="text-xs text-ink-faint">{t(locale, "navi.sim_weekly_now")}</p>
+                <p>{formatMoney(pendingSimulation.weeklyBudgetBefore, trip?.baseCurrency || "USD")}</p>
+              </div>
+              <div>
+                <p className="text-xs text-ink-faint">{t(locale, "navi.sim_weekly_after")}</p>
+                <p>{formatMoney(pendingSimulation.weeklyBudgetAfter, trip?.baseCurrency || "USD")}</p>
               </div>
             </div>
             <p className="text-sm text-ink-muted">{pendingSimulation.impactMessage}</p>

@@ -60,6 +60,7 @@ describe("NaviAgent remote mode", () => {
       transactions: [],
       goals: [],
       locale: "en" as const,
+      now: new Date("2026-10-21T16:00:00.000Z"),
     };
 
     const result = await agent.ask("How much can I spend today?", ctx);
@@ -78,6 +79,7 @@ describe("NaviAgent remote mode", () => {
     expect(body.action).toBe("ask");
     expect(body.text).toBe("How much can I spend today?");
     expect(body.tripContext.trip.id).toBe("t1");
+    expect(body.tripContext.now).toBe("2026-10-21T16:00:00.000Z");
     expect(Array.isArray(body.messages)).toBe(true);
     expect(body.messages.some((m: { role: string }) => m.role === "user")).toBe(true);
 
