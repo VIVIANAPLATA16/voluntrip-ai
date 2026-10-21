@@ -1,5 +1,6 @@
 import {
   QLOO_MAX_CITY_LENGTH,
+  QLOO_MAX_FILTER_TAGS,
   QLOO_MAX_TAGS,
   QLOO_MAX_TAKE,
   QLOO_MIN_TAKE,
@@ -7,7 +8,7 @@ import {
   type QlooPlaceQuery,
 } from "./types";
 
-const ALLOWED_FIELDS = new Set(["city", "tags", "take"]);
+const ALLOWED_FIELDS = new Set(["city", "tags", "take", "filterTags"]);
 
 export type QlooRequestValidation =
   | { ok: true; query: QlooPlaceQuery }
@@ -52,6 +53,20 @@ export function validateQlooPlaceRequest(body: unknown): QlooRequestValidation {
     }
   }
 
+  let filterTags: string[] | undefined;
+  if (body.filterTags !== undefined) {
+    if (!Array.isArray(body.filterTags) || body.filterTags.length > QLOO_MAX_FILTER_TAGS) {
+      return { ok: false, error: `filterTags must be an array of at most ${QLOO_MAX_FILTER_TAGS} string.` };
+    }
+    filterTags = [];
+    for (const tag of body.filterTags) {
+      if (typeof tag !== "string" || !QLOO_TAG_URN.test(tag)) {
+        return { ok: false, error: "Each filterTags value must match urn:tag:…" };
+      }
+      filterTags.push(tag);
+    }
+  }
+
   let take: number | undefined;
   if (body.take !== undefined) {
     if (typeof body.take !== "number" || !Number.isInteger(body.take)) {
@@ -63,5 +78,9 @@ export function validateQlooPlaceRequest(body: unknown): QlooRequestValidation {
     take = body.take;
   }
 
-  return { ok: true, query: { city, tags, take } };
+  const query: QlooPlaceQuery = { city };
+  if (tags) query.tags = tags;
+  if (filterTags) query.filterTags = filterTags;
+  if (take !== undefined) query.take = take;
+  return { ok: true, query };
 }

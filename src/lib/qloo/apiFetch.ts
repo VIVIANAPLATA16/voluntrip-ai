@@ -6,11 +6,12 @@ import type { QlooPlaceQuery, QlooResult } from "./types";
  */
 export async function fetchQlooPlaces(query: QlooPlaceQuery): Promise<QlooResult> {
   try {
-    const body: { city: string; tags?: string[]; take: number } = {
+    const body: { city: string; tags?: string[]; filterTags?: string[]; take: number } = {
       city: query.city,
       take: query.take ?? 10,
     };
     if (query.tags && query.tags.length > 0) body.tags = query.tags;
+    if (query.filterTags && query.filterTags.length > 0) body.filterTags = query.filterTags;
 
     const res = await fetch("/api/qloo", {
       method: "POST",

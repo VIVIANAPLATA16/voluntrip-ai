@@ -30,6 +30,9 @@ function sheetCopy(whyQloo: WhyQloo, usedBaseline = false): string {
       })
     );
   }
+  if (evidence.filter) {
+    lines.push(t("en", "experience.filtered_by", { label: evidence.filter }));
+  }
   if (evidence.matchedPlaceTags) {
     lines.push(
       t("en", "experience.matched_place_tags", {
@@ -88,5 +91,13 @@ describe("qlooEvidenceForSheet", () => {
     const evidence = qlooEvidenceForSheet(why({ source: "qloo" }), true);
     expect(evidence.showAsQloo).toBe(false);
     expect(sheetCopy(why({ source: "qloo" }), true)).not.toContain("by Qloo");
+  });
+
+  it("shows Filtered by only when a live Qloo filter is present", () => {
+    expect(sheetCopy(why({ source: "qloo" }))).not.toContain("Filtered by");
+    expect(sheetCopy(why({ source: "qloo", filter: "nightlife" }))).toContain(
+      "Filtered by Qloo tag: nightlife"
+    );
+    expect(sheetCopy(why({ source: "demo", filter: "nightlife" }))).not.toContain("Filtered by");
   });
 });

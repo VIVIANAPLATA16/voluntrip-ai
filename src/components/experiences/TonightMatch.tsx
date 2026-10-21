@@ -12,7 +12,7 @@ import { useAppStore } from "@/store/appStore";
 import { ExperienceCard } from "./ExperienceCard";
 import { WhyThisSheet } from "./WhyThisSheet";
 
-type ViewState = "empty" | "loading" | "match" | "demo" | "error";
+type ViewState = "empty" | "loading" | "match" | "demo" | "error" | "filter_empty";
 
 export function TonightMatch() {
   const router = useRouter();
@@ -66,6 +66,7 @@ export function TonightMatch() {
       setPayload(data);
       if (data.qlooSource === "unavailable") setState("error");
       else if (data.qlooSource === "demo" || data.usedBaseline) setState("demo");
+      else if (data.emptyFilter) setState("filter_empty");
       else setState("match");
     });
 
@@ -122,6 +123,14 @@ export function TonightMatch() {
             provenanceLabel={t(locale, "experience.generic_not_qloo")}
           />
         </div>
+      )}
+
+      {state === "filter_empty" && (
+        <Card className="min-w-0 overflow-hidden">
+          <p className="text-sm font-medium break-words">
+            {t(locale, "tonight.filter_empty", { city: trip.city })}
+          </p>
+        </Card>
       )}
 
       {state === "match" && payload?.best && (

@@ -27,4 +27,32 @@ describe("validateQlooPlaceRequest", () => {
     expect(validateQlooPlaceRequest({ city: "Medellín", take: 11 }).ok).toBe(false);
     expect(validateQlooPlaceRequest({ city: "Medellín", take: 1.5 }).ok).toBe(false);
   });
+
+  it("accepts one filterTags value and rejects two or extras", () => {
+    expect(
+      validateQlooPlaceRequest({
+        city: "Medellín",
+        filterTags: ["urn:tag:genre:place:night_club"],
+      })
+    ).toEqual({
+      ok: true,
+      query: {
+        city: "Medellín",
+        filterTags: ["urn:tag:genre:place:night_club"],
+      },
+    });
+    expect(
+      validateQlooPlaceRequest({
+        city: "Medellín",
+        filterTags: ["urn:tag:genre:place:night_club", "urn:tag:genre:place:spa"],
+      }).ok
+    ).toBe(false);
+    expect(
+      validateQlooPlaceRequest({
+        city: "Medellín",
+        filterTags: ["urn:tag:genre:place:night_club"],
+        mode: "filter",
+      }).ok
+    ).toBe(false);
+  });
 });

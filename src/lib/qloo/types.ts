@@ -48,6 +48,8 @@ export function isLiveQlooResult(
 export interface QlooPlaceQuery {
   city: string;
   tags?: string[];
+  /** At most one hard filter tag, sent as filter.tags. */
+  filterTags?: string[];
   take?: number;
 }
 
@@ -72,5 +74,6 @@ export const QLOO_DEFAULT_BASE_URL = "https://hackathon.api.qloo.com";
 export const QLOO_DEFAULT_TIMEOUT_MS = 8_000;
 export const QLOO_MAX_CITY_LENGTH = 80;
 export const QLOO_MAX_TAGS = 10;
+export const QLOO_MAX_FILTER_TAGS = 1;
 export const QLOO_MIN_TAKE = 1;
 export const QLOO_MAX_TAKE = 10;

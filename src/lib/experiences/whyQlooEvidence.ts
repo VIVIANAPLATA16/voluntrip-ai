@@ -3,6 +3,7 @@ import type { WhyQloo } from "./types";
 export type QlooEvidenceForSheet = {
   showAsQloo: boolean;
   signals: string[];
+  filter: string | null;
   rank: number;
   totalResults: number;
   matchedPlaceTags: string[] | null;
@@ -19,6 +20,7 @@ export function qlooEvidenceForSheet(
   return {
     showAsQloo,
     signals: showAsQloo ? why.signals : [],
+    filter: showAsQloo && why.filter ? why.filter : null,
     rank: why.rank,
     totalResults: why.totalResults,
     matchedPlaceTags:

@@ -18,6 +18,7 @@ describe("fetchQlooPlaces", () => {
     const result = await fetchQlooPlaces({
       city: "Medellín",
       tags: ["urn:tag:genre:music:salsa"],
+      filterTags: ["urn:tag:genre:place:night_club"],
       take: 10,
     });
 
@@ -30,6 +31,7 @@ describe("fetchQlooPlaces", () => {
     expect(body).toEqual({
       city: "Medellín",
       tags: ["urn:tag:genre:music:salsa"],
+      filterTags: ["urn:tag:genre:place:night_club"],
       take: 10,
     });
     expect(JSON.stringify(init)).not.toMatch(/QLOO|api-key|X-Api-Key/i);

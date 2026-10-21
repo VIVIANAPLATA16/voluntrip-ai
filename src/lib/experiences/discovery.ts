@@ -1,5 +1,9 @@
-import { allCulturalDnaTags, toQlooSignalTags } from "@/lib/culture/tagMap";
-import { QLOO_MAX_TAGS } from "@/lib/qloo/types";
+import {
+  CULTURAL_DNA_MAX_SIGNALS,
+  allCulturalDnaTags,
+  findCulturalDnaTag,
+  toQlooSignalTags,
+} from "@/lib/culture/tagMap";
 import type { QlooPlace, QlooPlaceQuery, QlooResult } from "@/lib/qloo/types";
 import type { DiscoveryResult } from "./types";
 
@@ -18,6 +22,8 @@ export interface DiscoverExperiencesInput {
   city: string;
   /** Caller should pass consented profile tag IDs. Ignored when consent is false. */
   profileTagIds: readonly string[];
+  /** At most one verified filter tag. Ignored when consent is false. */
+  filterTagId?: string;
   consentGranted: boolean;
 }
 
@@ -36,13 +42,20 @@ export async function discoverExperiences(
   options: DiscoverExperiencesOptions
 ): Promise<DiscoveryResult> {
   const tags = input.consentGranted
-    ? toQlooSignalTags(input.profileTagIds).slice(0, QLOO_MAX_TAGS)
+    ? toQlooSignalTags(input.profileTagIds).slice(0, CULTURAL_DNA_MAX_SIGNALS)
     : [];
+  const filterTagId =
+    input.consentGranted && input.filterTagId?.trim() ? input.filterTagId.trim() : undefined;
+  const filterTags = filterTagId ? [filterTagId] : undefined;
   const signals = signalLabels(tags);
+  const filter = filterTagId
+    ? findCulturalDnaTag(filterTagId)?.label ?? filterTagId
+    : undefined;
 
   const result = await options.searchPlaces({
     city: input.city,
     tags,
+    ...(filterTags ? { filterTags } : {}),
     take: 10,
   });
 
@@ -56,6 +69,7 @@ export async function discoverExperiences(
       candidates,
       qlooTotal: result.places.length,
       signals,
+      ...(filter ? { filter } : {}),
     };
   }
 

@@ -114,6 +114,10 @@ function insightsPath(query: QlooPlaceQuery): string {
   if (tags.length > 0) {
     params.set("signal.interests.tags", tags.join(","));
   }
+  const filterTags = (query.filterTags ?? []).map((tag) => tag.trim()).filter(Boolean);
+  if (filterTags.length > 0) {
+    params.set("filter.tags", filterTags[0] ?? "");
+  }
   return `/v2/insights?${params.toString()}`;
 }
 

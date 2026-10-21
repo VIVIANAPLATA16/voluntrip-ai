@@ -11,6 +11,8 @@ export interface ExperienceRecommendationPayload {
   missingConsent: boolean;
   qlooSource: QlooResult["source"] | "skipped";
   reason?: string;
+  emptyFilter?: boolean;
+  filterLabel?: string;
 }
 
 export interface NaviResponse {
