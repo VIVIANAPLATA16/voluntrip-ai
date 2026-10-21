@@ -15,6 +15,8 @@ export interface WhyQloo {
   signals: string[];
   /** How many place candidates Qloo returned (before hotel filter). */
   totalResults: number;
+  /** Label of the hard Qloo filter.tags, when one was sent. */
+  filter?: string;
 }
 
 export interface WhyVoluntrip {
@@ -59,4 +61,5 @@ export interface DiscoveryResult {
   candidates: QlooPlace[];
   qlooTotal: number;
   signals: string[];
+  filter?: string;
 }

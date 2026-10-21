@@ -202,13 +202,35 @@ describe("discoverExperiences", () => {
 
     expect(searchPlaces).toHaveBeenCalledWith({
       city: "Medellín",
-      tags: [SALSA, NIGHTLIFE],
+      tags: [SALSA],
       take: 10,
     });
     expect(result.source).toBe("qloo");
     expect(result.candidates.map((c) => c.id)).toEqual(["club"]);
     expect(result.qlooTotal).toBe(3);
-    expect(result.signals).toEqual(["salsa", "vida nocturna"]);
+    expect(result.signals).toEqual(["salsa"]);
+  });
+
+  it("sends signals and filterTags separately", async () => {
+    const searchPlaces = vi.fn(async () => qlooResult([]));
+    const filterId = "urn:tag:genre:place:night_club";
+    const result = await discoverExperiences(
+      {
+        city: "Medellín",
+        profileTagIds: PROFILE_TAGS,
+        filterTagId: filterId,
+        consentGranted: true,
+      },
+      { searchPlaces, now }
+    );
+    expect(searchPlaces).toHaveBeenCalledWith({
+      city: "Medellín",
+      tags: [SALSA],
+      filterTags: [filterId],
+      take: 10,
+    });
+    expect(result.filter).toBe("nightlife");
+    expect(result.candidates).toEqual([]);
   });
 
   it("does not send profile tags without consent", async () => {

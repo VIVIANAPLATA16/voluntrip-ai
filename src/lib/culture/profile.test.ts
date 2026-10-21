@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CulturalProfile } from "@/types";
 import {
   emptyCulturalProfile,
+  getConsentedFilterTagId,
   getConsentedQlooTagIds,
   toStoredCulturalProfile,
 } from "./profile";
@@ -24,21 +25,44 @@ describe("getConsentedQlooTagIds", () => {
     expect(ids).toEqual([]);
   });
 
-  it("returns only stored tag IDs when consent is granted", () => {
+  it("returns only verified signal IDs when consent is granted", () => {
     const ids = getConsentedQlooTagIds(
       profile({
         consent: { granted: true, grantedAt: "2026-10-19T00:00:00.000Z" },
         music: [{ label: "Salsa", qlooTagId: "urn:tag:genre:music:salsa" }],
         food: [{ label: "Coffee" }],
-        entertainment: [{ label: "Film", qlooTagId: "urn:tag:genre:media:film" }],
+        entertainment: [
+          { label: "Nightlife", qlooTagId: "urn:tag:genre:place:nightlife" },
+          { label: "Nightlife filter", qlooTagId: "urn:tag:genre:place:night_club" },
+        ],
         activities: [{ label: "Hiking", qlooTagId: "  urn:tag:genre:place:hiking  " }],
       })
     );
-    expect(ids).toEqual([
-      "urn:tag:genre:music:salsa",
-      "urn:tag:genre:media:film",
-      "urn:tag:genre:place:hiking",
-    ]);
+    expect(ids).toEqual(["urn:tag:genre:music:salsa"]);
+  });
+
+  it("returns at most one consented filter id", () => {
+    expect(getConsentedFilterTagId(null)).toBeUndefined();
+    expect(
+      getConsentedFilterTagId(
+        profile({
+          consent: { granted: false, grantedAt: null },
+          entertainment: [{ label: "Nightlife", qlooTagId: "urn:tag:genre:place:night_club" }],
+        })
+      )
+    ).toBeUndefined();
+    expect(
+      getConsentedFilterTagId(
+        profile({
+          consent: { granted: true, grantedAt: "2026-10-19T00:00:00.000Z" },
+          entertainment: [
+            { label: "old nightlife", qlooTagId: "urn:tag:genre:place:nightlife" },
+            { label: "Nightlife", qlooTagId: "urn:tag:genre:place:night_club" },
+          ],
+          activities: [{ label: "Yoga", qlooTagId: "urn:tag:genre:place:yoga_studio" }],
+        })
+      )
+    ).toBe("urn:tag:genre:place:night_club");
   });
 
   it("returns [] for a missing profile", () => {

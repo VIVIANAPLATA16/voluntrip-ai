@@ -44,7 +44,12 @@ describe("searchQlooPlaces", () => {
   it("returns source qloo for a valid 200, including null tags and price_level", async () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse(200, livePayload));
 
-    const result = await searchQlooPlaces({ city: "Medellín", take: 3 });
+    const result = await searchQlooPlaces({
+      city: "Medellín",
+      take: 3,
+      tags: ["urn:tag:genre:music:salsa"],
+      filterTags: ["urn:tag:genre:place:night_club"],
+    });
 
     expect(result.source).toBe("qloo");
     if (result.source !== "qloo") throw new Error("expected live Qloo");
@@ -64,6 +69,9 @@ describe("searchQlooPlaces", () => {
     expect(url).toContain("https://hackathon.api.qloo.com/v2/insights?");
     expect(url).toContain(encodeURIComponent("urn:entity:place"));
     expect(url).toContain("filter.location.query=");
+    expect(url).toContain("signal.interests.tags=");
+    expect(url).toContain("filter.tags=");
+    expect(url).toContain(encodeURIComponent("urn:tag:genre:place:night_club"));
     expect(url).not.toContain("email");
     expect(url).not.toContain("transaction");
     expect(init.headers).toMatchObject({ "X-Api-Key": "test-key-not-for-production" });

@@ -1,5 +1,5 @@
 import type { CulturalProfile } from "@/types";
-import { getConsentedQlooTagIds } from "@/lib/culture/profile";
+import { getConsentedFilterTagId, getConsentedQlooTagIds } from "@/lib/culture/profile";
 import {
   GENERIC_BASELINE_LABEL,
   discoverExperiences,
@@ -82,10 +82,12 @@ export async function recommendExperience(
     } satisfies ExperienceRecommendationPayload);
   }
 
+  const filterTagId = getConsentedFilterTagId(profile);
   const discovered = await discoverExperiences(
     {
       city,
       profileTagIds: rankInput.profileTagIds,
+      filterTagId,
       consentGranted: true,
     },
     { searchPlaces: resolveSearchPlaces(ctx), now }
@@ -112,6 +114,7 @@ export async function recommendExperience(
     queriedAt: discovered.queriedAt,
     qlooTotal: discovered.qlooTotal,
     signals: discovered.signals,
+    filter: discovered.filter,
   });
 
   return noMutation({
@@ -121,6 +124,8 @@ export async function recommendExperience(
     missingProfile: false,
     missingConsent: false,
     qlooSource: "qloo",
+    emptyFilter: Boolean(discovered.filter && discovered.candidates.length === 0),
+    filterLabel: discovered.filter,
   } satisfies ExperienceRecommendationPayload);
 }
 

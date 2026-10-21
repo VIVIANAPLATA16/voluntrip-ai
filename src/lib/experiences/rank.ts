@@ -26,6 +26,8 @@ export interface RankExperiencesInput {
   qlooTotal?: number;
   /** Labels of Cultural DNA signals sent to Qloo for this query. */
   signals?: readonly string[];
+  /** Label of the hard Qloo filter.tags, when one was sent. */
+  filter?: string;
   profileTagIds: readonly string[];
   intent: ExperienceIntent;
   trip: Trip;
@@ -84,6 +86,7 @@ export function rankExperiences(input: RankExperiencesInput): RankedExperiences 
         queriedAt: input.queriedAt,
         signals: [...(input.signals ?? [])],
         totalResults: total,
+        ...(input.filter ? { filter: input.filter } : {}),
       },
       whyVoluntrip: {
         estimatedCost,

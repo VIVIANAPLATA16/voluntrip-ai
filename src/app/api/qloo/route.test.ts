@@ -32,6 +32,14 @@ describe("POST /api/qloo", () => {
     const badTag = await POST(request({ city: "Medellín", tags: ["not-a-urn"] }));
     expect(badTag.status).toBe(400);
 
+    const twoFilters = await POST(
+      request({
+        city: "Medellín",
+        filterTags: ["urn:tag:genre:place:night_club", "urn:tag:genre:place:spa"],
+      })
+    );
+    expect(twoFilters.status).toBe(400);
+
     const tooLong = await POST(request({ city: "x".repeat(81) }));
     expect(tooLong.status).toBe(400);
   });

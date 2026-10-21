@@ -1,5 +1,6 @@
 import type { CulturalLike, CulturalProfile } from "@/types";
 import * as db from "@/lib/db/indexeddb";
+import { findCulturalDnaTag, isRetiredSignalTagId } from "./tagMap";
 
 export const CULTURAL_PROFILE_ID = "default" as const;
 
@@ -61,12 +62,7 @@ export function emptyCulturalProfile(
   };
 }
 
-/**
- * Tag IDs that may be sent to Qloo. Empty without consent.
- * Does not invent IDs — only returns ones already stored on likes.
- */
-export function getConsentedQlooTagIds(profile: CulturalProfile | null | undefined): string[] {
-  if (!profile?.consent.granted) return [];
+function storedTagIds(profile: CulturalProfile): string[] {
   const ids: string[] = [];
   for (const category of LIKE_CATEGORIES) {
     for (const like of profile[category]) {
@@ -75,6 +71,34 @@ export function getConsentedQlooTagIds(profile: CulturalProfile | null | undefin
     }
   }
   return ids;
+}
+
+/**
+ * Signal tag IDs that may be sent to Qloo. Empty without consent.
+ * Ignores retired nightlife and anything that is not a verified signal.
+ */
+export function getConsentedQlooTagIds(profile: CulturalProfile | null | undefined): string[] {
+  if (!profile?.consent.granted) return [];
+  const ids: string[] = [];
+  for (const id of storedTagIds(profile)) {
+    if (isRetiredSignalTagId(id)) continue;
+    const tag = findCulturalDnaTag(id);
+    if (tag?.mechanism === "signal" && tag.verifiedAsSignal) ids.push(id);
+  }
+  return ids;
+}
+
+/** At most one verified filter tag. Undefined without consent. */
+export function getConsentedFilterTagId(
+  profile: CulturalProfile | null | undefined
+): string | undefined {
+  if (!profile?.consent.granted) return undefined;
+  for (const id of storedTagIds(profile)) {
+    if (isRetiredSignalTagId(id)) continue;
+    const tag = findCulturalDnaTag(id);
+    if (tag?.mechanism === "filter" && tag.verifiedAsFilter) return id;
+  }
+  return undefined;
 }
 
 export async function getCulturalProfile(): Promise<CulturalProfile | null> {

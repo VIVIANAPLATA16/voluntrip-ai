@@ -58,6 +58,11 @@ export function WhyThisSheet({
               })}
             </p>
           ) : null}
+          {evidence.filter ? (
+            <p className="text-xs text-ink-muted break-words">
+              {t(locale, "experience.filtered_by", { label: evidence.filter })}
+            </p>
+          ) : null}
           {evidence.showAsQloo ? (
             <p className="text-xs text-ink-muted break-words">
               {t(locale, "experience.ranked_for_signals", {

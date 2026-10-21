@@ -34,7 +34,7 @@ const consentedProfile: CulturalProfile = {
   consent: { granted: true, grantedAt: "2026-10-19T00:00:00.000Z" },
   music: [{ label: "salsa", qlooTagId: SALSA }],
   food: [],
-  entertainment: [{ label: "vida nocturna", qlooTagId: NIGHTLIFE }],
+  entertainment: [{ label: "live music", qlooTagId: "urn:tag:genre:place:restaurant:live_music_bar" }],
   activities: [],
   updatedAt: "2026-10-19T00:00:00.000Z",
 };
