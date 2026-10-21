@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -15,13 +16,26 @@ import { WhyThisSheet } from "./WhyThisSheet";
 type ViewState = "empty" | "loading" | "match" | "demo" | "error" | "filter_empty";
 
 export function TonightMatch() {
+  const reduceMotion = useReducedMotion();
   const router = useRouter();
-  const locale = useAppStore((s) => s.locale);
-  const trip = useAppStore((s) => s.trip);
-  const pockets = useAppStore((s) => s.pockets);
-  const transactions = useAppStore((s) => s.transactions);
-  const goals = useAppStore((s) => s.goals);
-  const culturalProfile = useAppStore((s) => s.culturalProfile);
+  const locale = useAppStore(function (s) {
+    return s.locale;
+  });
+  const trip = useAppStore(function (s) {
+    return s.trip;
+  });
+  const pockets = useAppStore(function (s) {
+    return s.pockets;
+  });
+  const transactions = useAppStore(function (s) {
+    return s.transactions;
+  });
+  const goals = useAppStore(function (s) {
+    return s.goals;
+  });
+  const culturalProfile = useAppStore(function (s) {
+    return s.culturalProfile;
+  });
   const askNavi = useAppStore(function (s) {
     return s.askNavi;
   });
@@ -83,68 +97,87 @@ export function TonightMatch() {
 
   if (!trip) return null;
 
+  const panelKey = `${state}-${payload?.best?.id ?? "none"}`;
+  const motionProps = reduceMotion
+    ? { initial: false as const, animate: { opacity: 1, y: 0 }, exit: { opacity: 1, y: 0 } }
+    : {
+        initial: { opacity: 0, y: 8 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: -6 },
+        transition: { duration: 0.2, ease: "easeOut" as const },
+      };
+
   return (
     <section className="min-w-0 max-w-full space-y-3">
       <h2 className="text-sm font-semibold text-ink break-words">{t(locale, "tonight.title")}</h2>
 
-      {state === "empty" && (
-        <Card className="min-w-0 overflow-hidden">
-          <p className="text-sm font-medium break-words">{t(locale, "tonight.empty")}</p>
-          <p className="mt-1 text-xs text-ink-muted break-words">{t(locale, "tonight.empty_hint")}</p>
-        </Card>
-      )}
+      <AnimatePresence mode="wait">
+        <motion.div key={panelKey} className="min-w-0" {...motionProps}>
+          {state === "empty" && (
+            <Card className="min-w-0 overflow-hidden">
+              <p className="text-sm font-medium break-words">{t(locale, "tonight.empty")}</p>
+              <p className="mt-1 text-xs text-ink-muted break-words">{t(locale, "tonight.empty_hint")}</p>
+            </Card>
+          )}
 
-      {state === "loading" && (
-        <Card className="min-w-0 overflow-hidden">
-          <p className="text-sm text-ink-muted break-words">{t(locale, "tonight.loading")}</p>
-        </Card>
-      )}
+          {state === "loading" && (
+            <Card className="min-w-0 space-y-3 overflow-hidden" aria-busy="true">
+              <p className="sr-only">{t(locale, "tonight.loading")}</p>
+              <div className="space-y-2">
+                <span className="block h-4 w-2/3 animate-pulse rounded-md bg-accent-soft" />
+                <span className="block h-16 w-full animate-pulse rounded-xl bg-surface-elevated" />
+                <span className="block h-3 w-1/2 animate-pulse rounded-md bg-accent-soft" />
+              </div>
+            </Card>
+          )}
 
-      {state === "error" && (
-        <Card className="min-w-0 space-y-2 overflow-hidden">
-          <p className="text-sm font-medium break-words">{t(locale, "tonight.error")}</p>
-          <p className="text-xs text-ink-faint break-words">
-            {t(locale, "experience.generic_not_qloo")}
-          </p>
-          {payload?.best ? (
-            <ExperienceCard
-              experience={payload.best}
-              provenanceLabel={t(locale, "experience.generic_not_qloo")}
-            />
-          ) : null}
-        </Card>
-      )}
+          {state === "error" && (
+            <Card className="min-w-0 space-y-2 overflow-hidden">
+              <p className="text-sm font-medium break-words">{t(locale, "tonight.error")}</p>
+              <p className="text-xs text-ink-faint break-words">
+                {t(locale, "experience.generic_not_qloo")}
+              </p>
+              {payload?.best ? (
+                <ExperienceCard
+                  experience={payload.best}
+                  provenanceLabel={t(locale, "experience.generic_not_qloo")}
+                />
+              ) : null}
+            </Card>
+          )}
 
-      {state === "demo" && payload?.best && (
-        <div className="min-w-0 space-y-2">
-          <p className="text-xs text-ink-faint break-words">{t(locale, "tonight.demo")}</p>
-          <ExperienceCard
-            experience={payload.best}
-            provenanceLabel={t(locale, "experience.generic_not_qloo")}
-          />
-        </div>
-      )}
+          {state === "demo" && payload?.best && (
+            <div className="min-w-0 space-y-2">
+              <p className="text-xs text-ink-faint break-words">{t(locale, "tonight.demo")}</p>
+              <ExperienceCard
+                experience={payload.best}
+                provenanceLabel={t(locale, "experience.generic_not_qloo")}
+              />
+            </div>
+          )}
 
-      {state === "filter_empty" && (
-        <Card className="min-w-0 overflow-hidden">
-          <p className="text-sm font-medium break-words">
-            {t(locale, "tonight.filter_empty", { city: trip.city })}
-          </p>
-        </Card>
-      )}
+          {state === "filter_empty" && (
+            <Card className="min-w-0 overflow-hidden">
+              <p className="text-sm font-medium break-words">
+                {t(locale, "tonight.filter_empty", { city: trip.city })}
+              </p>
+            </Card>
+          )}
 
-      {state === "match" && payload?.best && (
-        <ExperienceCard experience={payload.best} />
-      )}
+          {state === "match" && payload?.best && (
+            <ExperienceCard experience={payload.best} />
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       {payload?.best && state !== "empty" && state !== "loading" && (
         <div className="flex min-w-0 flex-wrap gap-2">
-          <Button size="sm" variant="secondary" className="min-w-0" onClick={() => setWhyOpen(true)}>
+          <Button size="sm" variant="secondary" className="min-h-10 min-w-0" onClick={() => setWhyOpen(true)}>
             {t(locale, "tonight.why")}
           </Button>
           <Button
             size="sm"
-            className="min-w-0"
+            className="min-h-10 min-w-0"
             onClick={() => void simulateEstimated(payload.best!.estimatedCost.amount)}
           >
             {t(locale, "tonight.go")}
