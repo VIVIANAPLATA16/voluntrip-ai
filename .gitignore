@@ -40,11 +40,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# local Qloo tag verification output (may contain live entity names)
-scripts/verified-tags.out.json
-scripts/fix-tags.out.json
-scripts/recheck-tags.out.json
-scripts/recheck2-tags.out.json
-scripts/recheck3-tags.out.json
-scripts/recheck4-filter.out.json
