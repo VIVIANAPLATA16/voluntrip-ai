@@ -22,7 +22,7 @@ import {
   simulatePurchase,
 } from "@/lib/finance";
 import { createId } from "@/lib/id";
-import { resolveBudgetNow } from "@/lib/demo/remainingDays";
+import { alignDemoTripForBudget, resolveBudgetNow } from "@/lib/demo/remainingDays";
 
 export interface AgentContext {
   trip: Trip | null;
@@ -78,9 +78,15 @@ function agentNow(ctx: AgentContext): Date {
   return resolveBudgetNow(ctx.trip, ctx.now);
 }
 
-function snapshot(ctx: AgentContext): BudgetSnapshot {
+function budgetTrip(ctx: AgentContext): { trip: Trip; now: Date } {
   const trip = requireTrip(ctx);
-  return buildBudgetSnapshot(trip, ctx.transactions, ctx.pockets, agentNow(ctx));
+  const now = agentNow(ctx);
+  return { trip: alignDemoTripForBudget(trip, now), now };
+}
+
+function snapshot(ctx: AgentContext): BudgetSnapshot {
+  const { trip, now } = budgetTrip(ctx);
+  return buildBudgetSnapshot(trip, ctx.transactions, ctx.pockets, now);
 }
 
 export interface ToolDefinition {
@@ -318,9 +324,9 @@ export function executeTool(
         return { ok: true, data: { dailySafeSpend: s.dailySafeSpend, daysRemaining: s.daysRemaining } };
       }
       case "getMoneyRunway": {
-        const trip = requireTrip(ctx);
+        const { trip, now } = budgetTrip(ctx);
         const s = snapshot(ctx);
-        const runway: MoneyRunwayResult = calculateMoneyRunway(trip, s, agentNow(ctx));
+        const runway: MoneyRunwayResult = calculateMoneyRunway(trip, s, now);
         return { ok: true, data: runway };
       }
       case "getSpendingAnalysis": {
@@ -340,7 +346,7 @@ export function executeTool(
         };
       }
       case "simulatePurchase": {
-        const trip = requireTrip(ctx);
+        const { trip, now } = budgetTrip(ctx);
         const amount = Number(args.amount);
         const currency = (args.currency as CurrencyCode) || trip.baseCurrency;
         const sim: PurchaseSimulation = simulatePurchase(
@@ -349,7 +355,7 @@ export function executeTool(
           ctx.pockets,
           amount,
           currency,
-          agentNow(ctx)
+          now
         );
         return { ok: true, data: sim, mutation: { type: "none" } };
       }
@@ -441,8 +447,9 @@ export function executeTool(
         };
       }
       case "generateFinancialInsight": {
+        const { trip, now } = budgetTrip(ctx);
         const s = snapshot(ctx);
-        const runway = calculateMoneyRunway(requireTrip(ctx), s, agentNow(ctx));
+        const runway = calculateMoneyRunway(trip, s, now);
         return {
           ok: true,
           data: {
