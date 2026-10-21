@@ -4,6 +4,7 @@ import { runLocalAsk } from "./localAsk";
 import { buildConnectionErrorResponse } from "./responseBuilder";
 import type { AgentContext } from "./tools";
 import { AgentMemory } from "./memory";
+import type { StretchPlanResult } from "@/lib/experiences";
 import type { ExperienceRecommendationPayload, NaviResponse } from "./types";
 
 export type { NaviResponse } from "./types";
@@ -15,6 +16,7 @@ function shouldUseRemoteNavi(): boolean {
 export class NaviAgent {
   memory = new AgentMemory();
   lastRecommendation: ExperienceRecommendationPayload | null = null;
+  lastStretchPlan: StretchPlanResult | null = null;
 
   async ask(userText: string, ctx: AgentContext): Promise<NaviResponse> {
     const locale = ctx.locale;
@@ -46,6 +48,9 @@ export class NaviAgent {
   private rememberRecommendation(result: NaviResponse) {
     if (result.experienceRecommendation !== undefined) {
       this.lastRecommendation = result.experienceRecommendation;
+    }
+    if (result.stretchPlan !== undefined) {
+      this.lastStretchPlan = result.stretchPlan;
     }
   }
 
@@ -91,6 +96,7 @@ export class NaviAgent {
         pendingTransaction: data.pendingTransaction,
         mutations: data.mutations ?? [],
         experienceRecommendation: data.experienceRecommendation,
+        stretchPlan: data.stretchPlan,
       };
       this.rememberRecommendation(result);
       return result;

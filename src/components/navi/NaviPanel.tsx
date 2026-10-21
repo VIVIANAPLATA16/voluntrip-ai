@@ -12,11 +12,13 @@ import { Camera, Mic, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { blobToAzureWav } from "@/lib/audio/wavEncode";
 import { parseNaviBold } from "@/lib/agent/naviText";
+import { naviAgent } from "@/lib/agent/agent";
 
 const QUICK: Array<{ labelKey: TranslationKey; promptKey: TranslationKey }> = [
   { labelKey: "navi.quick.tonight", promptKey: "navi.quick_prompt.tonight" },
   { labelKey: "navi.quick.why", promptKey: "navi.quick_prompt.why" },
   { labelKey: "navi.quick.better", promptKey: "navi.quick_prompt.better" },
+  { labelKey: "navi.quick.stretch", promptKey: "navi.quick_prompt.stretch" },
   { labelKey: "navi.quick.afford", promptKey: "navi.quick_prompt.afford" },
   { labelKey: "navi.quick.expense", promptKey: "navi.quick_prompt.expense" },
   { labelKey: "navi.quick.spend", promptKey: "navi.quick_prompt.spend" },
@@ -376,6 +378,32 @@ export function NaviPanel() {
             className="rounded-card border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-ink"
           >
             {errorBanner}
+          </div>
+        )}
+
+        {naviAgent.lastStretchPlan?.kind === "ready" && !pendingSimulation && (
+          <div className="rounded-card border border-border bg-surface p-4 space-y-3 min-w-0 overflow-hidden">
+            <p className="text-sm font-semibold break-words">{t(locale, "stretch.title")}</p>
+            <p className="text-xs text-ink-muted break-words">
+              {t(locale, "stretch.total", {
+                cost: formatMoney(
+                  naviAgent.lastStretchPlan.stretched.totalDisplay,
+                  naviAgent.lastStretchPlan.stretched.displayCurrency,
+                  { showCode: true }
+                ),
+              })}
+            </p>
+            <Button
+              className="h-auto min-h-10 w-full max-w-full whitespace-normal"
+              onClick={function () {
+                const amount = naviAgent.lastStretchPlan?.kind === "ready"
+                  ? naviAgent.lastStretchPlan.stretched.totalEstimatedUsd
+                  : 0;
+                void send("What if I spend $" + Math.round(amount) + "?");
+              }}
+            >
+              {t(locale, "stretch.simulate_plan")}
+            </Button>
           </div>
         )}
 

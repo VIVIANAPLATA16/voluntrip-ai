@@ -35,6 +35,25 @@ export {
 } from "./evaluate";
 export { rankExperiences, type RankExperiencesInput } from "./rank";
 export {
+  assembleStretchPlan,
+  clampStretchNights,
+  convertUsdEstimate,
+  daysEquivalentFromSavings,
+  parseStretchNightsFromText,
+  requestStretchPlan,
+  resetStretchPlanCache,
+  swapStretchNight,
+  STRETCH_CULTURAL_FLOOR,
+  STRETCH_NIGHT_OPTIONS,
+  type AssembleStretchPlanInput,
+  type RequestStretchPlanInput,
+  type StretchNight,
+  type StretchNights,
+  type StretchPlanReady,
+  type StretchPlanResult,
+  type StretchPlanVersion,
+} from "./stretchPlan";
+export {
   qlooEvidenceForSheet,
   type QlooEvidenceForSheet,
 } from "./whyQlooEvidence";

@@ -3,7 +3,9 @@ import { formatMoney } from "@/lib/constants";
 import { t, type Locale } from "@/lib/i18n/dictionaries";
 import type { ExperienceRecommendationPayload, NaviResponse } from "./types";
 import { buildNaviResponse } from "./responseBuilder";
-import { formatExperienceToolReply } from "./experienceReply";
+import { applyStretchPlanToNaviResponse, formatExperienceToolReply } from "./experienceReply";
+import { parseStretchNightsFromText } from "@/lib/experiences";
+import type { StretchPlanResult } from "@/lib/experiences";
 import { executeToolAsync, isCulturalTool } from "./experienceTools";
 import type { AgentContext, ToolName } from "./tools";
 import { executeTool, makeToolCall } from "./tools";
@@ -68,6 +70,7 @@ export type LocalAskIntent =
   | "recommend"
   | "why"
   | "alternative"
+  | "stretch"
   | "unknown";
 
 export function detectLocalAskIntent(text: string): {
@@ -81,6 +84,13 @@ export function detectLocalAskIntent(text: string): {
     )
   ) {
     return { intent: "afford", tools: ["simulatePurchase", "getDailyBudget"] };
+  }
+  if (
+    /stretch (my )?trip|stretch plan|plan my weekend|plan \d+ nights|planea mis pr[oó]ximas noches|armar plan|plan que estira|estirar (el )?viaje|planeje minhas noites|estic(a|ar) a viagem/i.test(
+      lower
+    )
+  ) {
+    return { intent: "stretch", tools: ["planStretch"] };
   }
   if (
     /better option|otra opci[oó]n|opci[oó]n m[aá]s barata|find me a better|alternativa|outra op[cç][aã]o|op[cç][aã]o melhor/i.test(
@@ -266,12 +276,16 @@ async function runCulturalAsk(
     args.city = ctx.trip?.city ?? "";
     args.intent = intent === "recommend" ? "tonight" : "general";
   }
+  if (tool === "planStretch") {
+    args.city = ctx.trip?.city ?? "";
+    args.nights = parseStretchNightsFromText(userText);
+  }
 
   const result = await executeToolAsync(tool, args, ctx);
   const executedTools = [{ name: tool, args, result }];
   const content = formatExperienceToolReply(
     ctx.locale,
-    tool as "recommendExperience" | "explainRecommendation" | "findBetterOption",
+    tool as "recommendExperience" | "explainRecommendation" | "findBetterOption" | "planStretch",
     result
   );
 
@@ -284,6 +298,9 @@ async function runCulturalAsk(
 
   if (tool === "recommendExperience" && result.ok) {
     response.experienceRecommendation = result.data as ExperienceRecommendationPayload;
+  }
+  if (tool === "planStretch" && result.ok) {
+    return applyStretchPlanToNaviResponse(ctx.locale, response, result.data as StretchPlanResult);
   }
 
   return response;
