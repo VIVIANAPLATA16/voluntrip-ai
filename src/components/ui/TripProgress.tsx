@@ -1,6 +1,7 @@
 "use client";
 
 import { Progress } from "./Progress";
+import { DEMO_REMAINING_DAYS, demoBudgetNow } from "@/lib/demo/remainingDays";
 import { daysBetween, remainingTripDays } from "@/lib/finance/budget";
 import type { Trip } from "@/types";
 import { useAppStore } from "@/store/appStore";
@@ -8,7 +9,7 @@ import { t } from "@/lib/i18n/dictionaries";
 
 export function TripProgress({ trip }: { trip: Trip }) {
   const locale = useAppStore((s) => s.locale);
-  const now = new Date();
+  const now = DEMO_REMAINING_DAYS[trip.id] ? demoBudgetNow() : new Date();
   const total = Math.max(1, daysBetween(trip.startDate, trip.endDate));
   const elapsed = Math.min(total, daysBetween(trip.startDate, now));
   const remaining = remainingTripDays(trip, now);

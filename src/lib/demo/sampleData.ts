@@ -7,7 +7,7 @@ import type {
   Trip,
 } from "@/types";
 import { createTransaction } from "@/lib/finance/transactions";
-import { endDateWithRemainingDays, isoDateLocal } from "./remainingDays";
+import { demoBudgetNow, endDateWithRemainingDays, isoDateLocal } from "./remainingDays";
 
 const now = new Date();
 const start = new Date(now);
@@ -196,77 +196,136 @@ export function createDemoData() {
   return { profile, trip, pockets, transactions, goals, insights };
 }
 
-export function createMedellinDemoData(now: Date = new Date()) {
-  const tripId = "demo-trip-medellin";
-  const profileId = "demo-profile-medellin";
+type CityDemoSpec = {
+  tripId: string;
+  profileId: string;
+  remainingDays: number;
+  realAvailable: number;
+  emergency: number;
+  flight: number;
+  destination: string;
+  city: string;
+  country: string;
+  countryCode: string;
+  flag: string;
+  localCurrency: "COP" | "SGD";
+  hostName: string;
+  insightId: string;
+  insightTitle: string;
+  emergencyPocketId: string;
+  flightPocketId: string;
+};
+
+const MEDELLIN_SPEC: CityDemoSpec = {
+  tripId: "demo-trip-medellin",
+  profileId: "demo-profile-medellin",
+  remainingDays: 12,
+  realAvailable: 428,
+  emergency: 300,
+  flight: 250,
+  destination: "Medellín, Colombia",
+  city: "Medellín",
+  country: "Colombia",
+  countryCode: "CO",
+  flag: "🇨🇴",
+  localCurrency: "COP",
+  hostName: "Casa Voluntrip",
+  insightId: "insight-med-1",
+  insightTitle: "Medellín tonight",
+  emergencyPocketId: "pocket-med-emergency",
+  flightPocketId: "pocket-med-flight",
+};
+
+const SINGAPORE_SPEC: CityDemoSpec = {
+  tripId: "demo-trip-singapore",
+  profileId: "demo-profile-singapore",
+  remainingDays: 9,
+  realAvailable: 1800,
+  emergency: 600,
+  flight: 500,
+  destination: "Singapore",
+  city: "Singapore",
+  country: "Singapore",
+  countryCode: "SG",
+  flag: "🇸🇬",
+  localCurrency: "SGD",
+  hostName: "Voluntrip House",
+  insightId: "insight-sg-1",
+  insightTitle: "Singapore tonight",
+  emergencyPocketId: "pocket-sg-emergency",
+  flightPocketId: "pocket-sg-flight",
+};
+
+function createCityDemoData(spec: CityDemoSpec, now: Date = new Date()) {
   const startDate = isoDateLocal(now);
-  const endDate = endDateWithRemainingDays(12, now);
+  const endDate = endDateWithRemainingDays(spec.remainingDays, demoBudgetNow(now));
+  const initialBudget = spec.realAvailable + spec.emergency + spec.flight;
+  const createdAt = now.toISOString();
 
   const profile: Profile = {
-    id: profileId,
+    id: spec.profileId,
     displayName: "Traveler",
     locale: "en",
     preferredCurrency: "USD",
     onboardingComplete: true,
     avatarHue: 168,
-    createdAt: now.toISOString(),
-    updatedAt: now.toISOString(),
+    createdAt,
+    updatedAt: createdAt,
   };
 
   const trip: Trip = {
-    id: tripId,
-    destination: "Medellín, Colombia",
-    city: "Medellín",
-    country: "Colombia",
-    countryCode: "CO",
-    flag: "🇨🇴",
+    id: spec.tripId,
+    destination: spec.destination,
+    city: spec.city,
+    country: spec.country,
+    countryCode: spec.countryCode,
+    flag: spec.flag,
     baseCurrency: "USD",
-    localCurrency: "COP",
+    localCurrency: spec.localCurrency,
     startDate,
     endDate,
-    initialBudget: 978,
-    hostName: "Casa Voluntrip",
+    initialBudget,
+    hostName: spec.hostName,
     includedBenefits: ["accommodation", "breakfast"],
-    createdAt: now.toISOString(),
-    updatedAt: now.toISOString(),
+    createdAt,
+    updatedAt: createdAt,
   };
 
   const pockets: Pocket[] = [
     {
-      id: "pocket-med-emergency",
-      tripId,
+      id: spec.emergencyPocketId,
+      tripId: spec.tripId,
       name: "Emergency",
       category: "emergency",
-      balance: 300,
-      allocated: 300,
+      balance: spec.emergency,
+      allocated: spec.emergency,
       protected: true,
       icon: "shield",
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
+      createdAt,
+      updatedAt: createdAt,
     },
     {
-      id: "pocket-med-flight",
-      tripId,
+      id: spec.flightPocketId,
+      tripId: spec.tripId,
       name: "Return Flight",
       category: "return_flight",
-      balance: 250,
-      allocated: 250,
+      balance: spec.flight,
+      allocated: spec.flight,
       protected: true,
       icon: "plane",
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
+      createdAt,
+      updatedAt: createdAt,
     },
   ];
 
   const insights: AIInsight[] = [
     {
-      id: "insight-med-1",
-      tripId,
+      id: spec.insightId,
+      tripId: spec.tripId,
       type: "info",
-      title: "Medellín tonight",
-      message:
-        "You have $428 real available and 12 days left. Ask NAVI what to do tonight.",
-      createdAt: now.toISOString(),
+      title: spec.insightTitle,
+      message: `You have $${spec.realAvailable} real available and ${spec.remainingDays} days left. Ask NAVI what to do tonight.`,
+      createdAt,
     },
   ];
 
@@ -278,4 +337,12 @@ export function createMedellinDemoData(now: Date = new Date()) {
     goals: [] as Goal[],
     insights,
   };
+}
+
+export function createMedellinDemoData(now: Date = new Date()) {
+  return createCityDemoData(MEDELLIN_SPEC, now);
+}
+
+export function createSingaporeDemoData(now: Date = new Date()) {
+  return createCityDemoData(SINGAPORE_SPEC, now);
 }

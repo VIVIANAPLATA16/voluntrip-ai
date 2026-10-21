@@ -43,6 +43,7 @@ export function OnboardingFlow() {
   const completeOnboarding = useAppStore((s) => s.completeOnboarding);
   const loadDemo = useAppStore((s) => s.loadDemo);
   const loadMedellinDemo = useAppStore((s) => s.loadMedellinDemo);
+  const loadSingaporeDemo = useAppStore((s) => s.loadSingaporeDemo);
   const [protectToggles, setProtectToggles] = useState({
     emergency: false,
     flight: false,
@@ -86,6 +87,11 @@ export function OnboardingFlow() {
 
   const tryMedellin = async () => {
     await loadMedellinDemo();
+    router.push("/app");
+  };
+
+  const trySingapore = async () => {
+    await loadSingaporeDemo();
     router.push("/app");
   };
 
@@ -163,6 +169,9 @@ export function OnboardingFlow() {
                   </Button>
                   <Button className="w-full" variant="ghost" onClick={tryMedellin}>
                     {t(locale, "onboarding.load_demo_medellin")}
+                  </Button>
+                  <Button className="w-full" variant="ghost" onClick={trySingapore}>
+                    {t(locale, "onboarding.load_demo_singapore")}
                   </Button>
                 </div>
               </div>

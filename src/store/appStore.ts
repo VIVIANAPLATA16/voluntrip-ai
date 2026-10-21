@@ -21,7 +21,8 @@ import {
   getCulturalProfile as readCulturalProfile,
   saveCulturalProfile as persistCulturalProfile,
 } from "@/lib/culture/profile";
-import { createDemoData, createMedellinDemoData } from "@/lib/demo/sampleData";
+import { DEMO_REMAINING_DAYS, demoBudgetNow, refreshDemoTripDates } from "@/lib/demo/remainingDays";
+import { createDemoData, createMedellinDemoData, createSingaporeDemoData } from "@/lib/demo/sampleData";
 import { createTransaction } from "@/lib/finance/transactions";
 import { naviAgent } from "@/lib/agent/agent";
 import { buildBudgetSnapshot, calculateMoneyRunway } from "@/lib/finance";
@@ -69,6 +70,7 @@ interface AppStore {
   completeOnboarding: () => Promise<void>;
   loadDemo: () => Promise<void>;
   loadMedellinDemo: () => Promise<void>;
+  loadSingaporeDemo: () => Promise<void>;
   clearDemo: () => Promise<void>;
   addTransaction: (tx: Transaction) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
@@ -144,7 +146,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       const profile = await db.getProfile();
       const savedLocale = await db.getMeta<LocaleCode>("preferredLocale");
-      const trip = await db.getActiveTrip();
+      const storedTrip = await db.getActiveTrip();
+      const trip = storedTrip ? refreshDemoTripDates(storedTrip) : null;
+      if (trip && storedTrip && (trip.endDate !== storedTrip.endDate || trip.startDate !== storedTrip.startDate)) {
+        await db.saveTrip(trip);
+      }
       let pockets: Pocket[] = [];
       let transactions: Transaction[] = [];
       let goals: Goal[] = [];
@@ -345,6 +351,23 @@ export const useAppStore = create<AppStore>((set, get) => ({
     });
   },
 
+  loadSingaporeDemo: async () => {
+    await db.clearAllData();
+    const demo = createSingaporeDemoData();
+    await persistAll(demo);
+    set({
+      profile: demo.profile,
+      trip: demo.trip,
+      pockets: demo.pockets,
+      transactions: demo.transactions,
+      goals: demo.goals,
+      insights: demo.insights,
+      messages: [],
+      culturalProfile: null,
+      locale: demo.profile.locale,
+    });
+  },
+
   clearDemo: async () => {
     await db.clearAllData();
     set({
@@ -467,14 +490,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
   getSnapshot: () => {
     const { trip, transactions, pockets } = get();
     if (!trip) return null;
-    return buildBudgetSnapshot(trip, transactions, pockets);
+    const now = DEMO_REMAINING_DAYS[trip.id] ? demoBudgetNow() : undefined;
+    return buildBudgetSnapshot(trip, transactions, pockets, now);
   },
 
   getRunway: () => {
     const { trip, transactions, pockets } = get();
     if (!trip) return null;
-    const snap = buildBudgetSnapshot(trip, transactions, pockets);
-    return calculateMoneyRunway(trip, snap);
+    const now = DEMO_REMAINING_DAYS[trip.id] ? demoBudgetNow() : undefined;
+    const snap = buildBudgetSnapshot(trip, transactions, pockets, now);
+    return calculateMoneyRunway(trip, snap, now);
   },
 
   saveCulturalProfile: async (profile) => {
