@@ -44,3 +44,4 @@ next-env.d.ts
 # local Qloo tag verification output (may contain live entity names)
 scripts/verified-tags.out.json
 scripts/fix-tags.out.json
+scripts/recheck-tags.out.json
