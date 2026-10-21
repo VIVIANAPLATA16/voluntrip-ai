@@ -164,14 +164,14 @@ export function OnboardingFlow() {
                   <Button className="w-full" size="lg" onClick={next}>
                     {t(locale, "onboarding.start")}
                   </Button>
-                  <Button className="w-full" variant="ghost" onClick={tryDemo}>
-                    {t(locale, "onboarding.load_demo")}
-                  </Button>
                   <Button className="w-full" variant="ghost" onClick={tryMedellin}>
                     {t(locale, "onboarding.load_demo_medellin")}
                   </Button>
                   <Button className="w-full" variant="ghost" onClick={trySingapore}>
                     {t(locale, "onboarding.load_demo_singapore")}
+                  </Button>
+                  <Button className="w-full" variant="ghost" onClick={tryDemo}>
+                    {t(locale, "onboarding.load_demo")}
                   </Button>
                 </div>
               </div>
