@@ -11,6 +11,7 @@ import type { ExperienceRecommendationPayload } from "@/lib/agent/types";
 import { t } from "@/lib/i18n/dictionaries";
 import { useAppStore } from "@/store/appStore";
 import { ExperienceCard } from "./ExperienceCard";
+import { TasteCompareSheet } from "./TasteCompareSheet";
 import { WhyThisSheet } from "./WhyThisSheet";
 
 type ViewState = "empty" | "loading" | "match" | "demo" | "error" | "filter_empty" | "signals_empty";
@@ -43,6 +44,7 @@ export function TonightMatch() {
   const [payload, setPayload] = useState(null as ExperienceRecommendationPayload | null);
   const [state, setState] = useState("empty" as ViewState);
   const [whyOpen, setWhyOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   const consented = Boolean(culturalProfile?.consent.granted);
 
@@ -99,6 +101,7 @@ export function TonightMatch() {
 
   const simulateEstimated = async (amount: number) => {
     setWhyOpen(false);
+    setCompareOpen(false);
     await askNavi(`What if I spend $${Math.round(amount)}?`);
     router.push("/app/navi");
   };
@@ -197,6 +200,17 @@ export function TonightMatch() {
         </div>
       )}
 
+      <Button
+        size="sm"
+        variant="secondary"
+        className="h-auto min-h-10 min-w-0 max-w-full whitespace-normal break-words"
+        onClick={function () {
+          setCompareOpen(true);
+        }}
+      >
+        {t(locale, "tonight.compare")}
+      </Button>
+
       <WhyThisSheet
         open={whyOpen}
         onClose={() => setWhyOpen(false)}
@@ -204,6 +218,15 @@ export function TonightMatch() {
         alternative={payload?.alternative ?? null}
         usedBaseline={payload?.usedBaseline}
         onSimulate={(amount) => void simulateEstimated(amount)}
+      />
+      <TasteCompareSheet
+        open={compareOpen}
+        onClose={function () {
+          setCompareOpen(false);
+        }}
+        onSimulate={function (amount) {
+          void simulateEstimated(amount);
+        }}
       />
     </section>
   );

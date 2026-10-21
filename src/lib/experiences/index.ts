@@ -8,6 +8,16 @@ export {
   type CostEstimateBasis,
 } from "./costEstimate";
 export {
+  canCompareTaste,
+  compareTaste,
+  countChangedPlaces,
+  normalizePlaceKey,
+  resetCompareTasteCache,
+  type CompareTasteColumn,
+  type CompareTasteInput,
+  type CompareTasteResult,
+} from "./compareTaste";
+export {
   discoverExperiences,
   isHotelCandidate,
   HOTEL_TAG_PREFIXES,
