@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { t } from "@/lib/i18n/dictionaries";
 import type { WhyQloo } from "./types";
-import { qlooEvidenceForSheet } from "./whyQlooEvidence";
+import { qlooEvidenceForSheet, readableQlooTagLabel } from "./whyQlooEvidence";
 
 const queriedAt = "2026-10-19T12:00:00.000Z";
+const VEGAN = "urn:tag:genre:place:restaurant:vegan";
+const UNKNOWN = "urn:tag:genre:place:live_music_venue";
 
 function why(partial: Partial<WhyQloo> & Pick<WhyQloo, "source">): WhyQloo {
   return {
@@ -24,10 +26,14 @@ function sheetCopy(whyQloo: WhyQloo, usedBaseline = false): string {
   if (evidence.showAsQloo) {
     lines.push(t("en", "experience.signals_sent", { signals: evidence.signals.join(", ") }));
     lines.push(
-      t("en", "experience.ranked_for_signals", {
-        rank: evidence.rank,
-        total: evidence.totalResults,
-      })
+      t(
+        "en",
+        evidence.filter ? "experience.ranked_for_filter" : "experience.ranked_for_signals",
+        {
+          rank: evidence.rank,
+          total: evidence.totalResults,
+        }
+      )
     );
   }
   if (evidence.filter) {
@@ -43,6 +49,17 @@ function sheetCopy(whyQloo: WhyQloo, usedBaseline = false): string {
   lines.push(`Source: ${evidence.source}`);
   return lines.join("\n");
 }
+
+describe("readableQlooTagLabel", () => {
+  it("uses the Cultural DNA map label when the id is known", () => {
+    expect(readableQlooTagLabel(VEGAN)).toBe("Vegan");
+  });
+
+  it("falls back to the last URN segment with spaces and capitals", () => {
+    expect(readableQlooTagLabel(UNKNOWN)).toBe("Live Music Venue");
+    expect(readableQlooTagLabel("urn:tag:genre:place:nightlife")).toBe("Nightlife");
+  });
+});
 
 describe("qlooEvidenceForSheet", () => {
   it("fills live Qloo evidence with signals and rank-of-N, omitting empty matched tags", () => {
@@ -60,14 +77,12 @@ describe("qlooEvidenceForSheet", () => {
     expect(copy).not.toContain("none");
   });
 
-  it("shows matched place tags only when there are coincidences", () => {
-    const evidence = qlooEvidenceForSheet(
-      why({ source: "qloo", matchedTags: ["urn:tag:genre:place:nightlife"] })
-    );
-    expect(evidence.matchedPlaceTags).toEqual(["urn:tag:genre:place:nightlife"]);
-    expect(sheetCopy(why({ source: "qloo", matchedTags: ["urn:tag:genre:place:nightlife"] }))).toContain(
-      "Matched place tags: urn:tag:genre:place:nightlife"
-    );
+  it("shows matched place tags as readable labels, not raw URNs", () => {
+    const evidence = qlooEvidenceForSheet(why({ source: "qloo", matchedTags: [VEGAN, UNKNOWN] }));
+    expect(evidence.matchedPlaceTags).toEqual(["Vegan", "Live Music Venue"]);
+    const copy = sheetCopy(why({ source: "qloo", matchedTags: [VEGAN] }));
+    expect(copy).toContain("Matched place tags: Vegan");
+    expect(copy).not.toContain(VEGAN);
   });
 
   it("does not present demo or unavailable as Qloo", () => {
@@ -93,11 +108,15 @@ describe("qlooEvidenceForSheet", () => {
     expect(sheetCopy(why({ source: "qloo" }), true)).not.toContain("by Qloo");
   });
 
-  it("shows Filtered by only when a live Qloo filter is present", () => {
+  it("shows Filtered by and in-filter rank only when a live Qloo filter is present", () => {
     expect(sheetCopy(why({ source: "qloo" }))).not.toContain("Filtered by");
-    expect(sheetCopy(why({ source: "qloo", filter: "nightlife" }))).toContain(
-      "Filtered by Qloo tag: nightlife"
+    expect(sheetCopy(why({ source: "qloo" }))).toContain(
+      "Ranked #1 of 10 by Qloo for these signals"
     );
+    const withFilter = sheetCopy(why({ source: "qloo", filter: "nightlife" }));
+    expect(withFilter).toContain("Filtered by Qloo tag: nightlife");
+    expect(withFilter).toContain("Ranked #1 of 10 by Qloo within the filter");
+    expect(withFilter).not.toContain("for these signals");
     expect(sheetCopy(why({ source: "demo", filter: "nightlife" }))).not.toContain("Filtered by");
   });
 });

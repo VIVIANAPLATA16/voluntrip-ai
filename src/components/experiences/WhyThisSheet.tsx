@@ -65,10 +65,14 @@ export function WhyThisSheet({
           ) : null}
           {evidence.showAsQloo ? (
             <p className="text-xs text-ink-muted break-words">
-              {t(locale, "experience.ranked_for_signals", {
-                rank: evidence.rank,
-                total: evidence.totalResults,
-              })}
+              {t(
+                locale,
+                evidence.filter ? "experience.ranked_for_filter" : "experience.ranked_for_signals",
+                {
+                  rank: evidence.rank,
+                  total: evidence.totalResults,
+                }
+              )}
             </p>
           ) : null}
           {evidence.matchedPlaceTags ? (

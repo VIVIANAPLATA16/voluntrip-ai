@@ -191,10 +191,18 @@ export function CulturalDnaCard() {
   const signalCount = selectedSignalCount(profile);
   const atSignalLimit = signalCount >= CULTURAL_DNA_MAX_SIGNALS;
   const chosen = selectedEntries(profile);
+  const selectedFilter = chosen.find(function (entry) {
+    return entry.tag.mechanism === "filter";
+  });
 
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(function () {
     return initialOpen(profile);
+  });
+  const [filtersOpen, setFiltersOpen] = useState(function () {
+    return chosen.some(function (entry) {
+      return entry.tag.mechanism === "filter";
+    });
   });
   const [shakeId, setShakeId] = useState("");
   const [showLimit, setShowLimit] = useState(false);
@@ -226,6 +234,9 @@ export function CulturalDnaCard() {
       setShakeId(tag.qlooTagId);
       setShowLimit(true);
       return;
+    }
+    if (!selected && tag.mechanism === "filter") {
+      setFiltersOpen(true);
     }
     void onToggle(category, tag);
   };
@@ -325,44 +336,83 @@ export function CulturalDnaCard() {
       />
 
       <section className="min-w-0 space-y-2">
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-ink break-words">
-            {t(locale, "culture.filter_section")}
-          </h3>
-          <p className="mt-0.5 text-xs text-ink-muted break-words">{t(locale, "culture.filter_hint")}</p>
-        </div>
-        <div className="flex min-w-0 flex-wrap gap-2">
-          {CATEGORIES.flatMap(verifiedTags)
-            .filter(function (tag) {
-              return tag.mechanism === "filter" && matches(tag);
-            })
-            .map(function (tag, index) {
-              const category = CATEGORIES.find(function (cat) {
-                return verifiedTags(cat).some(function (item) {
-                  return item.qlooTagId === tag.qlooTagId;
-                });
-              });
-              if (!category) return null;
-              return (
-                <TasteChip
-                  key={tag.qlooTagId}
-                  tag={tag}
-                  label={likeLabel(locale, tag)}
-                  selected={isSelected(profile[category], tag)}
-                  filter
-                  reduceMotion={Boolean(reduceMotion)}
-                  delay={index * stagger}
-                  shake={shakeId === tag.qlooTagId}
-                  onShakeEnd={function () {
-                    setShakeId("");
-                  }}
-                  onClick={function () {
-                    onChipClick(category, tag, isSelected(profile[category], tag));
-                  }}
-                />
-              );
-            })}
-        </div>
+        <button
+          type="button"
+          aria-expanded={Boolean(filtersOpen || q)}
+          onClick={function () {
+            setFiltersOpen(function (current) {
+              return !current;
+            });
+          }}
+          className="flex min-h-10 w-full min-w-0 items-center justify-between gap-2 text-left"
+        >
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-ink break-words">
+              {t(locale, "culture.filter_section")}
+            </span>
+            {selectedFilter && !filtersOpen && !q ? (
+              <span className="mt-0.5 block text-xs font-medium text-accent break-words">
+                {likeLabel(locale, selectedFilter.tag)}
+              </span>
+            ) : (
+              <span className="mt-0.5 block text-xs text-ink-muted break-words">
+                {t(locale, "culture.filter_hint")}
+              </span>
+            )}
+          </span>
+          <motion.span
+            animate={reduceMotion ? undefined : { rotate: filtersOpen || q ? 180 : 0 }}
+            transition={fade}
+            className="shrink-0 text-ink-faint"
+          >
+            <ChevronDown className="size-4" aria-hidden />
+          </motion.span>
+        </button>
+        <AnimatePresence initial={false}>
+          {filtersOpen || q ? (
+            <motion.div
+              key="filters"
+              initial={reduceMotion ? false : { height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={reduceMotion ? undefined : { height: 0, opacity: 0 }}
+              transition={fade}
+              className="overflow-hidden"
+            >
+              <div className="flex min-w-0 flex-wrap gap-2 pb-1 pt-1">
+                {CATEGORIES.flatMap(verifiedTags)
+                  .filter(function (tag) {
+                    return tag.mechanism === "filter" && matches(tag);
+                  })
+                  .map(function (tag, index) {
+                    const category = CATEGORIES.find(function (cat) {
+                      return verifiedTags(cat).some(function (item) {
+                        return item.qlooTagId === tag.qlooTagId;
+                      });
+                    });
+                    if (!category) return null;
+                    return (
+                      <TasteChip
+                        key={tag.qlooTagId}
+                        tag={tag}
+                        label={likeLabel(locale, tag)}
+                        selected={isSelected(profile[category], tag)}
+                        filter
+                        reduceMotion={Boolean(reduceMotion)}
+                        delay={index * stagger}
+                        shake={shakeId === tag.qlooTagId}
+                        onShakeEnd={function () {
+                          setShakeId("");
+                        }}
+                        onClick={function () {
+                          onChipClick(category, tag, isSelected(profile[category], tag));
+                        }}
+                      />
+                    );
+                  })}
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </section>
 
       {showLimit || atSignalLimit ? (
