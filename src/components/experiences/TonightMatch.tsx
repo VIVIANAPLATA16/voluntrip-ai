@@ -13,7 +13,7 @@ import { useAppStore } from "@/store/appStore";
 import { ExperienceCard } from "./ExperienceCard";
 import { WhyThisSheet } from "./WhyThisSheet";
 
-type ViewState = "empty" | "loading" | "match" | "demo" | "error" | "filter_empty";
+type ViewState = "empty" | "loading" | "match" | "demo" | "error" | "filter_empty" | "signals_empty";
 
 export function TonightMatch() {
   const reduceMotion = useReducedMotion();
@@ -79,9 +79,17 @@ export function TonightMatch() {
       naviAgent.lastRecommendation = data;
       setPayload(data);
       if (data.qlooSource === "unavailable") setState("error");
-      else if (data.qlooSource === "demo" || data.usedBaseline) setState("demo");
-      else if (data.emptyFilter) setState("filter_empty");
-      else setState("match");
+      else if (data.qlooSource === "skipped" || data.missingConsent || data.missingProfile) {
+        setState("empty");
+      } else if ((data.qlooSource === "demo" || data.usedBaseline) && data.best) {
+        setState("demo");
+      } else if (data.qlooSource === "demo" && !data.best) {
+        setState("error");
+      } else if (data.emptyFilter || !data.best) {
+        setState("signals_empty");
+      } else {
+        setState("match");
+      }
     });
 
     return () => {
@@ -133,16 +141,20 @@ export function TonightMatch() {
 
           {state === "error" && (
             <Card className="min-w-0 space-y-2 overflow-hidden">
-              <p className="text-sm font-medium break-words">{t(locale, "tonight.error")}</p>
-              <p className="text-xs text-ink-faint break-words">
-                {t(locale, "experience.generic_not_qloo")}
-              </p>
               {payload?.best ? (
-                <ExperienceCard
-                  experience={payload.best}
-                  provenanceLabel={t(locale, "experience.generic_not_qloo")}
-                />
-              ) : null}
+                <>
+                  <p className="text-sm font-medium break-words">{t(locale, "tonight.error")}</p>
+                  <p className="text-xs text-ink-faint break-words">
+                    {t(locale, "experience.generic_not_qloo")}
+                  </p>
+                  <ExperienceCard
+                    experience={payload.best}
+                    provenanceLabel={t(locale, "experience.generic_not_qloo")}
+                  />
+                </>
+              ) : (
+                <p className="text-sm font-medium break-words">{t(locale, "tonight.unavailable")}</p>
+              )}
             </Card>
           )}
 
@@ -156,13 +168,13 @@ export function TonightMatch() {
             </div>
           )}
 
-          {state === "filter_empty" && (
+          {state === "filter_empty" || state === "signals_empty" ? (
             <Card className="min-w-0 overflow-hidden">
               <p className="text-sm font-medium break-words">
-                {t(locale, "tonight.filter_empty", { city: trip.city })}
+                {t(locale, "tonight.signals_empty", { city: trip.city })}
               </p>
             </Card>
-          )}
+          ) : null}
 
           {state === "match" && payload?.best && (
             <ExperienceCard experience={payload.best} />

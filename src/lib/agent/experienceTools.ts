@@ -45,6 +45,33 @@ function hasConsent(profile: CulturalProfile | null | undefined): boolean {
   return Boolean(profile?.consent.granted);
 }
 
+function foldCity(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+export function isMedellinCity(city: string): boolean {
+  return foldCity(city) === "medellin";
+}
+
+function emptyRecommendation(
+  fields: Pick<ExperienceRecommendationPayload, "missingProfile" | "missingConsent" | "qlooSource"> & {
+    reason?: string;
+    emptyFilter?: boolean;
+    filterLabel?: string;
+  }
+): ExperienceRecommendationPayload {
+  return {
+    best: null,
+    alternative: null,
+    usedBaseline: false,
+    ...fields,
+  };
+}
+
 export async function recommendExperience(
   args: Record<string, unknown>,
   ctx: AgentContext
@@ -70,16 +97,25 @@ export async function recommendExperience(
   };
 
   if (missingProfile || missingConsent) {
-    const ranked = rankMedellinBaseline(rankInput);
-    return noMutation({
-      best: ranked.best,
-      alternative: ranked.alternative,
-      usedBaseline: true,
-      baselineLabel: GENERIC_BASELINE_LABEL,
-      missingProfile,
-      missingConsent,
-      qlooSource: "skipped",
-    } satisfies ExperienceRecommendationPayload);
+    if (isMedellinCity(ctx.trip.city)) {
+      const ranked = rankMedellinBaseline(rankInput);
+      return noMutation({
+        best: ranked.best,
+        alternative: ranked.alternative,
+        usedBaseline: true,
+        baselineLabel: GENERIC_BASELINE_LABEL,
+        missingProfile,
+        missingConsent,
+        qlooSource: "skipped",
+      } satisfies ExperienceRecommendationPayload);
+    }
+    return noMutation(
+      emptyRecommendation({
+        missingProfile,
+        missingConsent,
+        qlooSource: "skipped",
+      })
+    );
   }
 
   const filterTagId = getConsentedFilterTagId(profile);
@@ -94,17 +130,39 @@ export async function recommendExperience(
   );
 
   if (discovered.source !== "qloo") {
-    const ranked = rankMedellinBaseline(rankInput);
-    return noMutation({
-      best: ranked.best,
-      alternative: ranked.alternative,
-      usedBaseline: true,
-      baselineLabel: GENERIC_BASELINE_LABEL,
-      missingProfile: false,
-      missingConsent: false,
-      qlooSource: discovered.source,
-      reason: discovered.reason,
-    } satisfies ExperienceRecommendationPayload);
+    if (isMedellinCity(ctx.trip.city)) {
+      const ranked = rankMedellinBaseline(rankInput);
+      return noMutation({
+        best: ranked.best,
+        alternative: ranked.alternative,
+        usedBaseline: true,
+        baselineLabel: GENERIC_BASELINE_LABEL,
+        missingProfile: false,
+        missingConsent: false,
+        qlooSource: discovered.source,
+        reason: discovered.reason,
+      } satisfies ExperienceRecommendationPayload);
+    }
+    return noMutation(
+      emptyRecommendation({
+        missingProfile: false,
+        missingConsent: false,
+        qlooSource: discovered.source,
+        reason: discovered.reason,
+      })
+    );
+  }
+
+  if (discovered.candidates.length === 0) {
+    return noMutation(
+      emptyRecommendation({
+        missingProfile: false,
+        missingConsent: false,
+        qlooSource: "qloo",
+        emptyFilter: Boolean(discovered.filter),
+        filterLabel: discovered.filter,
+      })
+    );
   }
 
   const ranked = rankExperiences({
@@ -124,7 +182,7 @@ export async function recommendExperience(
     missingProfile: false,
     missingConsent: false,
     qlooSource: "qloo",
-    emptyFilter: Boolean(discovered.filter && discovered.candidates.length === 0),
+    emptyFilter: false,
     filterLabel: discovered.filter,
   } satisfies ExperienceRecommendationPayload);
 }
