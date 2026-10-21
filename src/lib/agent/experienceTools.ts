@@ -9,7 +9,7 @@ import {
 import type { ExperienceIntent } from "@/lib/experiences";
 import { fetchQlooPlaces } from "@/lib/qloo/apiFetch";
 import type { QlooPlaceQuery, QlooResult } from "@/lib/qloo/types";
-import { resolveBudgetNow } from "@/lib/demo/remainingDays";
+import { alignDemoTripForBudget, resolveBudgetNow } from "@/lib/demo/remainingDays";
 import type { AgentContext, ToolName, ToolResult } from "./tools";
 import { executeTool } from "./tools";
 import type { ExperienceRecommendationPayload } from "./types";
@@ -87,11 +87,12 @@ export async function recommendExperience(
   const missingProfile = profile == null;
   const missingConsent = !hasConsent(profile);
   const now = resolveBudgetNow(ctx.trip, ctx.now);
+  const trip = alignDemoTripForBudget(ctx.trip, now);
 
   const rankInput = {
     profileTagIds: getConsentedQlooTagIds(profile),
     intent,
-    trip: ctx.trip,
+    trip,
     transactions: ctx.transactions,
     pockets: ctx.pockets,
     now,

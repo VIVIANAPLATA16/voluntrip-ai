@@ -7,6 +7,7 @@ import { formatExperienceToolReply } from "./experienceReply";
 import { executeToolAsync, isCulturalTool } from "./experienceTools";
 import type { AgentContext, ToolName } from "./tools";
 import { executeTool, makeToolCall } from "./tools";
+import { simulationReply } from "./simulationReply";
 
 export function parseAmountCurrency(text: string): { amount: number; currency: string } | null {
   const patterns = [
@@ -151,30 +152,6 @@ function guessCategory(text: string): string {
   return "general";
 }
 
-function localizeSimulationImpact(
-  simulation: PurchaseSimulation,
-  locale: Locale,
-  base: string
-): string {
-  if (!simulation.affordable) {
-    const shortfall = Math.round(
-      (simulation.purchaseAmountBase - simulation.availableBefore) * 100
-    ) / 100;
-    return t(locale, "navi.sim_impact_unaffordable", {
-      shortfall: formatMoney(shortfall, base, { showCode: true }),
-    });
-  }
-  const dailyDrop =
-    simulation.dailyBudgetBefore > 0
-      ? (simulation.dailyBudgetBefore - simulation.dailyBudgetAfter) /
-        simulation.dailyBudgetBefore
-      : 0;
-  if (dailyDrop > 0.25) {
-    return t(locale, "navi.sim_impact_tight", { days: simulation.daysImpacted });
-  }
-  return t(locale, "navi.sim_impact_ok");
-}
-
 function localizeRunwayMessage(runway: MoneyRunwayResult, locale: Locale): string {
   if (runway.status === "on_track" || runway.daysEarly <= 0) {
     const date = new Date(runway.tripEndDate).toLocaleDateString(
@@ -227,15 +204,7 @@ function craftReply(
   const base = ctx.trip?.baseCurrency || "USD";
 
   if (intent === "afford" && simulation) {
-    return t(locale, "navi.simulation_body", {
-      availableBefore: formatMoney(simulation.availableBefore, base, { showCode: true }),
-      dailyBefore: formatMoney(simulation.dailyBudgetBefore, base),
-      weeklyBefore: formatMoney(simulation.weeklyBudgetBefore, base),
-      availableAfter: formatMoney(simulation.availableAfter, base, { showCode: true }),
-      dailyAfter: formatMoney(simulation.dailyBudgetAfter, base),
-      weeklyAfter: formatMoney(simulation.weeklyBudgetAfter, base),
-      impact: localizeSimulationImpact(simulation, locale, base),
-    });
+    return simulationReply(locale, simulation, base);
   }
 
   if (intent === "expense" && pendingTransaction) {

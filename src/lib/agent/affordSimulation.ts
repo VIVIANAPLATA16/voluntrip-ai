@@ -1,6 +1,7 @@
 import type { PurchaseSimulation } from "@/types";
 import type { NaviResponse } from "./types";
 import { detectLocalAskIntent, parseAmountCurrency } from "./localAsk";
+import { simulationReply } from "./simulationReply";
 import { executeTool, type AgentContext } from "./tools";
 
 function wantsPurchaseSimulation(userText: string): boolean {
@@ -37,6 +38,11 @@ export function attachAffordSimulation(
     }
   }
 
+  const base = ctx.trip?.baseCurrency || "USD";
+  const content = simulation
+    ? simulationReply(ctx.locale, simulation, base)
+    : response.message.content;
+
   return {
     ...response,
     simulation,
@@ -44,5 +50,9 @@ export function attachAffordSimulation(
     mutations: (response.mutations ?? []).filter(function (mutation) {
       return mutation.type !== "transaction";
     }),
+    message: {
+      ...response.message,
+      content,
+    },
   };
 }

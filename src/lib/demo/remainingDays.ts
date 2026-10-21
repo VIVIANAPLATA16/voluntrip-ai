@@ -29,16 +29,28 @@ export function budgetNowForTrip(trip: { id: string } | null | undefined, now: D
 }
 
 /**
- * Prefer a client-provided instant (ISO from JSON) so Azure uses the same clock as the dashboard.
- * Do not shift hours again — the client already applied demoBudgetNow when needed.
+ * Seed from the client ISO when present, then apply the demo local-noon clock.
+ * Using the ISO as-is on a UTC server keeps the Bogotá endDate and yields +1 day.
  */
 export function resolveBudgetNow(
   trip: { id: string } | null | undefined,
   provided?: unknown
 ): Date {
-  const parsed = parseNow(provided);
-  if (parsed) return parsed;
-  return budgetNowForTrip(trip);
+  return budgetNowForTrip(trip, parseNow(provided) ?? new Date());
+}
+
+/** Recompute canned demo start/end so remainingTripDays hits the target in this process TZ. */
+export function alignDemoTripForBudget<T extends Trip>(trip: T, now: Date = new Date()): T {
+  return refreshDemoTripDates(trip, now) as T;
+}
+
+/** Clock + dates the dashboard and NAVI tools must share for canned demos. */
+export function prepareDemoBudgetContext<T extends Trip>(
+  trip: T,
+  provided?: unknown
+): { trip: T; now: Date } {
+  const now = resolveBudgetNow(trip, provided);
+  return { trip: alignDemoTripForBudget(trip, now), now };
 }
 
 export function isoDateLocal(date: Date): string {

@@ -24,7 +24,7 @@ import {
 import {
   DEMO_REMAINING_DAYS,
   budgetNowForTrip,
-  demoBudgetNow,
+  prepareDemoBudgetContext,
   refreshDemoTripDates,
 } from "@/lib/demo/remainingDays";
 import { createDemoData, createMedellinDemoData, createSingaporeDemoData } from "@/lib/demo/sampleData";
@@ -496,16 +496,23 @@ export const useAppStore = create<AppStore>((set, get) => ({
   getSnapshot: () => {
     const { trip, transactions, pockets } = get();
     if (!trip) return null;
-    const now = DEMO_REMAINING_DAYS[trip.id] ? demoBudgetNow() : undefined;
-    return buildBudgetSnapshot(trip, transactions, pockets, now);
+    if (!DEMO_REMAINING_DAYS[trip.id]) {
+      return buildBudgetSnapshot(trip, transactions, pockets);
+    }
+    const prepared = prepareDemoBudgetContext(trip);
+    return buildBudgetSnapshot(prepared.trip, transactions, pockets, prepared.now);
   },
 
   getRunway: () => {
     const { trip, transactions, pockets } = get();
     if (!trip) return null;
-    const now = DEMO_REMAINING_DAYS[trip.id] ? demoBudgetNow() : undefined;
-    const snap = buildBudgetSnapshot(trip, transactions, pockets, now);
-    return calculateMoneyRunway(trip, snap, now);
+    if (!DEMO_REMAINING_DAYS[trip.id]) {
+      const snap = buildBudgetSnapshot(trip, transactions, pockets);
+      return calculateMoneyRunway(trip, snap);
+    }
+    const prepared = prepareDemoBudgetContext(trip);
+    const snap = buildBudgetSnapshot(prepared.trip, transactions, pockets, prepared.now);
+    return calculateMoneyRunway(prepared.trip, snap, prepared.now);
   },
 
   saveCulturalProfile: async (profile) => {
