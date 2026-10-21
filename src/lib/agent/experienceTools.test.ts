@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { CulturalProfile, Pocket, Trip } from "@/types";
 import type { QlooPlace, QlooResult } from "@/lib/qloo/types";
 import { executeTool } from "./tools";
-import { executeToolAsync, recommendExperience } from "./experienceTools";
+import { executeToolAsync, isMedellinCity, recommendExperience } from "./experienceTools";
 import { detectLocalAskIntent, runLocalAsk } from "./localAsk";
 import { GENERIC_BASELINE_LABEL } from "@/lib/experiences";
 
@@ -201,5 +201,128 @@ describe("NAVI experience tools", () => {
       })
     );
     expect(followUp.message.content).toMatch(/don't have a cheaper alternative/i);
+  });
+});
+
+describe("city-scoped baseline", () => {
+  const singaporeTrip: Trip = {
+    ...trip,
+    id: "t-sg",
+    destination: "Singapore",
+    city: "Singapore",
+    country: "Singapore",
+    countryCode: "SG",
+    flag: "🇸🇬",
+    localCurrency: "SGD",
+  };
+
+  it("treats Medellín spellings as the baseline city", () => {
+    expect(isMedellinCity("Medellín")).toBe(true);
+    expect(isMedellinCity("Medellin")).toBe(true);
+    expect(isMedellinCity("MEDELLÍN")).toBe(true);
+    expect(isMedellinCity("Singapore")).toBe(false);
+  });
+
+  it("does not use the Medellín baseline when Qloo is unavailable in Singapore", async () => {
+    const searchPlaces = vi.fn(async () => ({
+      source: "unavailable" as const,
+      places: [] as [],
+      reason: "QLOO_NETWORK" as const,
+    }));
+    const rec = await recommendExperience(
+      { city: "Singapore", intent: "tonight" },
+      ctx({ trip: singaporeTrip, searchPlaces })
+    );
+    const payload = rec.data as {
+      best: unknown;
+      alternative: unknown;
+      usedBaseline: boolean;
+      qlooSource: string;
+    };
+    expect(payload.best).toBeNull();
+    expect(payload.alternative).toBeNull();
+    expect(payload.usedBaseline).toBe(false);
+    expect(payload.qlooSource).toBe("unavailable");
+  });
+
+  it("does not use the Medellín baseline when Qloo is demo/NO_KEY in Singapore", async () => {
+    const searchPlaces = vi.fn(async () => ({
+      source: "demo" as const,
+      reason: "NO_KEY" as const,
+      places: [
+        {
+          id: "demo-medellin-plaza-botero",
+          name: "Plaza Botero",
+          tags: [],
+          popularity: 0.8,
+          priceLevel: 1 as const,
+          rank: 1,
+        },
+      ],
+    }));
+    const rec = await recommendExperience(
+      { city: "Singapore", intent: "tonight" },
+      ctx({ trip: singaporeTrip, searchPlaces })
+    );
+    const payload = rec.data as {
+      best: { name?: string } | null;
+      usedBaseline: boolean;
+      qlooSource: string;
+    };
+    expect(payload.best).toBeNull();
+    expect(payload.usedBaseline).toBe(false);
+    expect(payload.qlooSource).toBe("demo");
+    expect(payload.best?.name).not.toBe("Plaza Botero");
+    expect(payload.best?.name).not.toBe("Cerro Nutibara lookout");
+  });
+
+  it("keeps Singapore without consent empty and does not query or invent places", async () => {
+    const searchPlaces = vi.fn(async () => qlooLive([salsaPlace]));
+    const rec = await recommendExperience(
+      { city: "Singapore", intent: "tonight" },
+      ctx({
+        trip: singaporeTrip,
+        searchPlaces,
+        culturalProfile: {
+          ...consentedProfile,
+          consent: { granted: false, grantedAt: null },
+        },
+      })
+    );
+    const payload = rec.data as {
+      best: unknown;
+      usedBaseline: boolean;
+      qlooSource: string;
+      missingConsent: boolean;
+    };
+    expect(searchPlaces).not.toHaveBeenCalled();
+    expect(payload.best).toBeNull();
+    expect(payload.usedBaseline).toBe(false);
+    expect(payload.qlooSource).toBe("skipped");
+    expect(payload.missingConsent).toBe(true);
+  });
+
+  it("still uses the labeled Medellín baseline when Qloo is down there", async () => {
+    const searchPlaces = vi.fn(async () => ({
+      source: "unavailable" as const,
+      places: [] as [],
+      reason: "QLOO_TIMEOUT" as const,
+    }));
+    const rec = await recommendExperience(
+      { city: "Medellin", intent: "tonight" },
+      ctx({
+        trip: { ...trip, city: "Medellin" },
+        searchPlaces,
+      })
+    );
+    const payload = rec.data as {
+      best: { name?: string; source?: string } | null;
+      usedBaseline: boolean;
+      qlooSource: string;
+    };
+    expect(payload.usedBaseline).toBe(true);
+    expect(payload.qlooSource).toBe("unavailable");
+    expect(payload.best?.name).toBe("Cerro Nutibara lookout");
+    expect(payload.best?.source).not.toBe("qloo");
   });
 });
