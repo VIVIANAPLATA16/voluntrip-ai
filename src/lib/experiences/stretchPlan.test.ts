@@ -213,6 +213,30 @@ describe("assembleStretchPlan", () => {
     expect(result.stretched.nights).toHaveLength(3);
   });
 
+  it("fills below the cultural floor with the cheapest leftovers", () => {
+    const mixed = [
+      exp({ id: "strong", name: "Strong", cost: 80, culturalFit: 90, valueScore: 95 }),
+      exp({ id: "pricey", name: "Pricey", cost: 80, culturalFit: 40, valueScore: 90 }),
+      exp({ id: "mid", name: "Mid", cost: 40, culturalFit: 50, valueScore: 70 }),
+      exp({ id: "cheap", name: "Cheap", cost: 8, culturalFit: 30, valueScore: 40 }),
+      exp({ id: "okay", name: "Okay", cost: 20, culturalFit: 55, valueScore: 50 }),
+    ];
+    const result = assemble(mixed, 3);
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    expect(result.stretched.nights.map(function (n) { return n.place.id; })).toEqual([
+      "strong",
+      "cheap",
+      "okay",
+    ]);
+    expect(result.stretched.nights[0].weakerFit).toBe(false);
+    expect(result.stretched.nights[1].weakerFit).toBe(true);
+    expect(result.stretched.nights[2].weakerFit).toBe(true);
+    expect(result.stretched.totalEstimatedUsd).toBeLessThanOrEqual(result.best.totalEstimatedUsd);
+    expect(result.stretched.totalEstimatedUsd).toBeLessThan(result.best.totalEstimatedUsd);
+    expect(result.stretched.totalEstimatedUsd).toBe(108);
+  });
+
   it("breaks Value Score ties by cheaper estimated cost", () => {
     const tied = [
       exp({ id: "x", name: "X", cost: 40, culturalFit: 80, valueScore: 70 }),

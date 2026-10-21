@@ -221,8 +221,10 @@ function pickStretched(
         return !used.has(normalizePlaceKey(place));
       })
       .sort(function (a, b) {
-        if (b.culturalFit !== a.culturalFit) return b.culturalFit - a.culturalFit;
-        return a.estimatedCost.amount - b.estimatedCost.amount;
+        if (a.estimatedCost.amount !== b.estimatedCost.amount) {
+          return a.estimatedCost.amount - b.estimatedCost.amount;
+        }
+        return b.culturalFit - a.culturalFit;
       });
     for (const place of rest) {
       if (places.length >= n) break;
