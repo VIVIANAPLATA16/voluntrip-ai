@@ -75,7 +75,7 @@ const dictionaries = {
     "navi.general_balance":
       "You have {available} available. Safe spend: {daily}/day. How can I help?",
     "navi.simulation_body":
-      "Here's the simulation.\n\nCURRENT\nAvailable: {availableBefore}\nDaily budget: {dailyBefore}\n\nAFTER THIS PURCHASE\nAvailable: {availableAfter}\nNew daily budget: {dailyAfter}\n\n{impact}\n\nConfirm purchase or cancel.",
+      "Here's the simulation.\n\nCURRENT\nAvailable: {availableBefore}\nDaily budget: {dailyBefore}\nWeekly: {weeklyBefore}\n\nAFTER THIS PURCHASE\nAvailable: {availableAfter}\nNew daily budget: {dailyAfter}\nWeekly: {weeklyAfter}\n\n{impact}\n\nConfirm purchase or cancel.",
     "navi.expense_found":
       "I found this expense:\n\n{concept}\n{original}\n≈ {base}\n\nConfirm to save.",
     "navi.protect_done":
@@ -272,6 +272,8 @@ const dictionaries = {
     "navi.sim_after": "After",
     "navi.sim_daily_now": "Daily now",
     "navi.sim_daily_after": "Daily after",
+    "navi.sim_weekly_now": "Weekly now",
+    "navi.sim_weekly_after": "Weekly after",
     "navi.confirm_purchase": "Confirm purchase",
     "navi.confirm_expense": "Confirm expense",
     "navi.voice_preview_title": "Voice / receipt preview",
@@ -473,7 +475,7 @@ const dictionaries = {
     "navi.general_balance":
       "Tienes {available} disponibles. Gasto seguro: {daily}/día. ¿En qué te ayudo?",
     "navi.simulation_body":
-      "Simulación lista.\n\nDisponible ahora: {availableBefore}\nPresupuesto diario: {dailyBefore}\n\nDespués de la compra:\nDisponible: {availableAfter}\nNuevo diario: {dailyAfter}\n\n{impact}\n\nConfirma para registrar o cancela.",
+      "Simulación lista.\n\nDisponible ahora: {availableBefore}\nPresupuesto diario: {dailyBefore}\nSemanal: {weeklyBefore}\n\nDespués de la compra:\nDisponible: {availableAfter}\nNuevo diario: {dailyAfter}\nSemanal: {weeklyAfter}\n\n{impact}\n\nConfirma para registrar o cancela.",
     "navi.expense_found":
       "Encontré este gasto:\n\n{concept}\n{original}\n≈ {base}\n\n¿Confirmas?",
     "navi.protect_done":
@@ -670,6 +672,8 @@ const dictionaries = {
     "navi.sim_after": "Después",
     "navi.sim_daily_now": "Diario ahora",
     "navi.sim_daily_after": "Diario después",
+    "navi.sim_weekly_now": "Semanal ahora",
+    "navi.sim_weekly_after": "Semanal después",
     "navi.confirm_purchase": "Confirmar compra",
     "navi.confirm_expense": "Confirmar gasto",
     "navi.voice_preview_title": "Vista previa voz / recibo",
@@ -870,7 +874,7 @@ const dictionaries = {
     "navi.general_balance":
       "Você tem {available} disponíveis. Gasto seguro: {daily}/dia. Como posso ajudar?",
     "navi.simulation_body":
-      "Simulação pronta.\n\nDisponível agora: {availableBefore}\nOrçamento diário: {dailyBefore}\n\nDepois da compra:\nDisponível: {availableAfter}\nNovo diário: {dailyAfter}\n\n{impact}\n\nConfirme para registrar ou cancele.",
+      "Simulação pronta.\n\nDisponível agora: {availableBefore}\nOrçamento diário: {dailyBefore}\nSemanal: {weeklyBefore}\n\nDepois da compra:\nDisponível: {availableAfter}\nNovo diário: {dailyAfter}\nSemanal: {weeklyAfter}\n\n{impact}\n\nConfirme para registrar ou cancele.",
     "navi.expense_found":
       "Encontrei este gasto:\n\n{concept}\n{original}\n≈ {base}\n\nConfirma?",
     "navi.protect_done":
@@ -1067,6 +1071,8 @@ const dictionaries = {
     "navi.sim_after": "Depois",
     "navi.sim_daily_now": "Diário agora",
     "navi.sim_daily_after": "Diário depois",
+    "navi.sim_weekly_now": "Semanal agora",
+    "navi.sim_weekly_after": "Semanal depois",
     "navi.confirm_purchase": "Confirmar compra",
     "navi.confirm_expense": "Confirmar gasto",
     "navi.voice_preview_title": "Prévia voz / recibo",

@@ -68,6 +68,7 @@ export class NaviAgent {
             transactions: ctx.transactions,
             goals: ctx.goals,
             locale: ctx.locale,
+            now: ctx.now instanceof Date ? ctx.now.toISOString() : ctx.now,
             culturalProfile: ctx.culturalProfile ?? null,
             lastRecommendation: ctx.lastRecommendation ?? this.lastRecommendation,
           },

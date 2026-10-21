@@ -5,6 +5,7 @@
 
 import type { AgentMessage } from "@/types";
 import type { ExperienceRecommendationPayload, NaviResponse } from "@/lib/agent/types";
+import { attachAffordSimulation } from "@/lib/agent/affordSimulation";
 import { runLocalAsk } from "@/lib/agent/localAsk";
 import { NAVI_INSIGHT_PROMPT, NAVI_SYSTEM_PROMPT } from "@/lib/agent/prompts";
 import {
@@ -236,7 +237,7 @@ export async function callAzureOpenAI(params: {
     if (rec) {
       response.experienceRecommendation = rec.result.data as ExperienceRecommendationPayload;
     }
-    return response;
+    return attachAffordSimulation(params.userText, tripContext, response);
   }
 
   throw new Error("Azure OpenAI exceeded maximum tool-calling iterations");

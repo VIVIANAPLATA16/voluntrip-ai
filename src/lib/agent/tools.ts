@@ -22,6 +22,7 @@ import {
   simulatePurchase,
 } from "@/lib/finance";
 import { createId } from "@/lib/id";
+import { resolveBudgetNow } from "@/lib/demo/remainingDays";
 
 export interface AgentContext {
   trip: Trip | null;
@@ -29,7 +30,8 @@ export interface AgentContext {
   transactions: Transaction[];
   goals: Goal[];
   locale: LocaleCode;
-  now?: Date;
+  /** Dashboard clock. ISO string after JSON (Azure /api/navi). */
+  now?: Date | string;
   culturalProfile?: CulturalProfile | null;
   lastRecommendation?: ExperienceRecommendationPayload | null;
   /** Server injects the Qloo client; the browser uses POST /api/qloo instead. */
@@ -72,14 +74,13 @@ function requireTrip(ctx: AgentContext): Trip {
   return ctx.trip;
 }
 
+function agentNow(ctx: AgentContext): Date {
+  return resolveBudgetNow(ctx.trip, ctx.now);
+}
+
 function snapshot(ctx: AgentContext): BudgetSnapshot {
   const trip = requireTrip(ctx);
-  return buildBudgetSnapshot(
-    trip,
-    ctx.transactions,
-    ctx.pockets,
-    ctx.now ?? new Date()
-  );
+  return buildBudgetSnapshot(trip, ctx.transactions, ctx.pockets, agentNow(ctx));
 }
 
 export interface ToolDefinition {
@@ -319,7 +320,7 @@ export function executeTool(
       case "getMoneyRunway": {
         const trip = requireTrip(ctx);
         const s = snapshot(ctx);
-        const runway: MoneyRunwayResult = calculateMoneyRunway(trip, s, ctx.now);
+        const runway: MoneyRunwayResult = calculateMoneyRunway(trip, s, agentNow(ctx));
         return { ok: true, data: runway };
       }
       case "getSpendingAnalysis": {
@@ -348,9 +349,9 @@ export function executeTool(
           ctx.pockets,
           amount,
           currency,
-          ctx.now
+          agentNow(ctx)
         );
-        return { ok: true, data: sim };
+        return { ok: true, data: sim, mutation: { type: "none" } };
       }
       case "convertCurrency": {
         const amount = Number(args.amount);
@@ -441,7 +442,7 @@ export function executeTool(
       }
       case "generateFinancialInsight": {
         const s = snapshot(ctx);
-        const runway = calculateMoneyRunway(requireTrip(ctx), s, ctx.now);
+        const runway = calculateMoneyRunway(requireTrip(ctx), s, agentNow(ctx));
         return {
           ok: true,
           data: {

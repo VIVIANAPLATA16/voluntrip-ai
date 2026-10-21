@@ -26,12 +26,12 @@ export function buildNaviResponse(params: {
   let pendingTransaction: Transaction | undefined;
 
   for (const { name, result } of params.executedTools) {
-    if (!result.ok || !result.mutation || result.mutation.type === "none") continue;
-
-    if (name === "simulatePurchase" && result.data) {
+    if (name === "simulatePurchase" && result.ok && result.data) {
       simulation = result.data as PurchaseSimulation;
       continue;
     }
+
+    if (!result.ok || !result.mutation || result.mutation.type === "none") continue;
 
     if (name === "createTransaction" && result.mutation.payload) {
       pendingTransaction = result.mutation.payload as Transaction;
