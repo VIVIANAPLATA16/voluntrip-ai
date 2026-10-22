@@ -22,7 +22,9 @@ export {
   dedupePlacesByName,
   foldPlaceName,
   isHotelCandidate,
+  isNonTouristCandidate,
   HOTEL_TAG_PREFIXES,
+  NON_TOURIST_ID_MARKERS,
   type DiscoverExperiencesInput,
   type DiscoverExperiencesOptions,
 } from "./discovery";
