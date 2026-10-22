@@ -281,12 +281,13 @@ function PlanSummary({
   return (
     <Card className="min-w-0 space-y-1 overflow-hidden">
       <p className="text-sm font-medium break-words">{t(locale, "stretch.total", { cost: total })}</p>
-      {plan.identical ? (
+      {version.kind === "stretched" && plan.identical ? (
         <p className="text-xs text-ink-muted break-words">{t(locale, "stretch.identical")}</p>
-      ) : (
+      ) : null}
+      {version.kind === "stretched" && !plan.identical ? (
         <p className="text-xs text-ink-muted break-words">{t(locale, "stretch.savings", { cost: savings })}</p>
-      )}
-      {plan.rateAvailable && plan.daysEquivalent !== null ? (
+      ) : null}
+      {version.kind === "stretched" && plan.rateAvailable && plan.daysEquivalent !== null ? (
         <p className="text-xs text-ink-muted break-words">
           {t(locale, "stretch.days_equiv", { days: plan.daysEquivalent })}
         </p>
@@ -381,11 +382,13 @@ function WhyStretchPlanSheet({
               cost: formatMoney(version.totalDisplay, version.displayCurrency, { showCode: true }),
             })}
           </p>
-          <p className="text-xs text-ink-muted break-words">
-            {t(locale, "stretch.savings", {
-              cost: formatMoney(plan.savingsDisplay, plan.displayCurrency, { showCode: true }),
-            })}
-          </p>
+          {version.kind === "stretched" ? (
+            <p className="text-xs text-ink-muted break-words">
+              {t(locale, "stretch.savings", {
+                cost: formatMoney(plan.savingsDisplay, plan.displayCurrency, { showCode: true }),
+              })}
+            </p>
+          ) : null}
           <p className="text-xs text-ink-muted break-words">
             {t(locale, "experience.daily_before")}: {formatMoney(sim.dailyBudgetBefore, plan.displayCurrency)}
           </p>

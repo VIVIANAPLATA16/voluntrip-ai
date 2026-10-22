@@ -4,6 +4,7 @@ import type { QlooPlace, QlooPlaceQuery, QlooResult } from "@/lib/qloo/types";
 import { convertCurrency } from "@/lib/finance/currency";
 import { buildBudgetSnapshot } from "@/lib/finance/budget";
 import { prepareDemoBudgetContext } from "@/lib/demo/remainingDays";
+import { normalizePlaceKey } from "./compareTaste";
 import {
   assembleStretchPlan,
   clampStretchNights,
@@ -276,6 +277,42 @@ describe("assembleStretchPlan", () => {
     expect(swapped.best.totalEstimatedUsd).toBe(180);
     expect(swapped.savingsUsd).toBe(120);
     expect(swapped.stretched.nights.map(function (n) { return n.place.id; })).toEqual(["d", "e", "f"]);
+  });
+
+  it("never repeats a place on two nights, including after swap", () => {
+    const withDup = [
+      ...pool,
+      exp({ id: "a", name: "Alpha copy", cost: 80, culturalFit: 90, valueScore: 92 }),
+    ];
+    const result = assemble(withDup, 5);
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    function unique(nights: { place: { id: string; name: string } }[]) {
+      const keys = nights.map(function (night) {
+        return normalizePlaceKey(night.place);
+      });
+      expect(new Set(keys).size).toBe(keys.length);
+    }
+    unique(result.best.nights);
+    unique(result.stretched.nights);
+    const swappedBest = swapStretchNight(result, "best", 1, {
+      snapshot: snapshotFor(),
+      trip,
+      transactions: [],
+      pockets,
+      now,
+    });
+    unique(swappedBest.best.nights);
+    unique(swappedBest.stretched.nights);
+    const swappedStretched = swapStretchNight(swappedBest, "stretched", 0, {
+      snapshot: snapshotFor(),
+      trip,
+      transactions: [],
+      pockets,
+      now,
+    });
+    unique(swappedStretched.best.nights);
+    unique(swappedStretched.stretched.nights);
   });
 
   it("converts totals to COP / THB / SGD and omits days when the rate is missing", () => {
