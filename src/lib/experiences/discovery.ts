@@ -4,6 +4,7 @@ import {
   findCulturalDnaTag,
   toQlooSignalTags,
 } from "@/lib/culture/tagMap";
+import { QLOO_ENTITY_UUID, QLOO_MAX_ENTITIES } from "@/lib/qloo/types";
 import type { QlooPlace, QlooPlaceQuery, QlooResult } from "@/lib/qloo/types";
 import type { DiscoveryResult } from "./types";
 
@@ -12,10 +13,61 @@ export const HOTEL_TAG_PREFIXES = [
   "urn:tag:category:place:hotel",
 ] as const;
 
+const MIN_ENTITY_PLACES = 3;
+
+const LODGING_NAME_RE =
+  /(^|[^a-z])(hotel|hotels|lodging|lodgings|accommodation|accommodations|hostel|hostels|resort|resorts|motel|motels|inn|inns|guesthouse|guesthouses)([^a-z]|$)/;
+
+const LODGING_ID_MARKERS = [
+  "hotel",
+  "lodging",
+  "accommodation",
+  "hostel",
+  "resort",
+  "motel",
+  "inn",
+  "guesthouse",
+  "guest_house",
+];
+
+/** Lowercase, strip accents, collapse spaces — used to drop duplicate place names. */
+export function foldPlaceName(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function isHotelCandidate(place: Pick<QlooPlace, "tags">): boolean {
-  return place.tags.some((tag) =>
-    HOTEL_TAG_PREFIXES.some((prefix) => tag.id.startsWith(prefix))
-  );
+  return place.tags.some(function (tag) {
+    const id = tag.id.trim().toLowerCase();
+    if (HOTEL_TAG_PREFIXES.some((prefix) => id.startsWith(prefix))) return true;
+    const parts = id.split(":");
+    if (
+      parts.some(function (part) {
+        return LODGING_ID_MARKERS.some(function (marker) {
+          return part === marker || part.startsWith(marker + "_") || part.startsWith(marker + "-");
+        });
+      })
+    ) {
+      return true;
+    }
+    return LODGING_NAME_RE.test(foldPlaceName(tag.name));
+  });
+}
+
+export function dedupePlacesByName(places: readonly QlooPlace[]): QlooPlace[] {
+  const seen = new Set<string>();
+  const out: QlooPlace[] = [];
+  for (const place of places) {
+    const key = foldPlaceName(place.name);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(place);
+  }
+  return out;
 }
 
 export interface DiscoverExperiencesInput {
@@ -24,6 +76,10 @@ export interface DiscoverExperiencesInput {
   profileTagIds: readonly string[];
   /** At most one verified filter tag. Ignored when consent is false. */
   filterTagId?: string;
+  /** Consented Qloo entity UUIDs. Ignored when consent is false. */
+  entityIds?: readonly string[];
+  /** Readable names for the entity UUIDs, shown in whyQloo. */
+  entityNames?: readonly string[];
   consentGranted: boolean;
 }
 
@@ -47,6 +103,12 @@ export async function discoverExperiences(
   const filterTagId =
     input.consentGranted && input.filterTagId?.trim() ? input.filterTagId.trim() : undefined;
   const filterTags = filterTagId ? [filterTagId] : undefined;
+  const entityIds = input.consentGranted
+    ? uniqueEntityIds(input.entityIds)
+    : [];
+  const entityNames = input.consentGranted
+    ? uniqueNames(input.entityNames).slice(0, entityIds.length || QLOO_MAX_ENTITIES)
+    : [];
   const signals = signalLabels(tags);
   const filter = filterTagId
     ? findCulturalDnaTag(filterTagId)?.label ?? filterTagId
@@ -56,11 +118,15 @@ export async function discoverExperiences(
     city: input.city,
     tags,
     ...(filterTags ? { filterTags } : {}),
+    ...(entityIds.length > 0 ? { entities: entityIds } : {}),
     take: 10,
   });
 
   const queriedAt = (options.now ?? new Date()).toISOString();
-  const candidates = result.places.filter((place) => !isHotelCandidate(place));
+  const stripped = result.places.filter((place) => !isHotelCandidate(place));
+  const deduped = dedupePlacesByName(stripped);
+  const usedEntities = entityIds.length > 0;
+  const candidates = usedEntities && deduped.length < MIN_ENTITY_PLACES ? [] : deduped;
 
   if (result.source === "qloo") {
     return {
@@ -70,6 +136,7 @@ export async function discoverExperiences(
       qlooTotal: result.places.length,
       signals,
       ...(filter ? { filter } : {}),
+      ...(entityNames.length > 0 ? { entities: entityNames } : {}),
     };
   }
 
@@ -92,6 +159,32 @@ export async function discoverExperiences(
     qlooTotal: 0,
     signals: [],
   };
+}
+
+function uniqueEntityIds(ids: readonly string[] | undefined): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of ids ?? []) {
+    const id = raw.trim().toLowerCase();
+    if (!QLOO_ENTITY_UUID.test(id) || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+    if (out.length >= QLOO_MAX_ENTITIES) break;
+  }
+  return out;
+}
+
+function uniqueNames(names: readonly string[] | undefined): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of names ?? []) {
+    const name = raw.trim();
+    const key = foldPlaceName(name);
+    if (!name || seen.has(key)) continue;
+    seen.add(key);
+    out.push(name);
+  }
+  return out;
 }
 
 function signalLabels(ids: readonly string[]): string[] {

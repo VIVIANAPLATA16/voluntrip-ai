@@ -136,6 +136,58 @@ describe("NAVI experience tools", () => {
     expect(searchPlaces).not.toHaveBeenCalled();
     expect(noConsent.message.content).toMatch(/generic, not from Qloo/);
     expect(noConsent.experienceRecommendation?.qlooSource).toBe("skipped");
+
+    searchPlaces.mockClear();
+    const lovedWithoutConsent = await runLocalAsk(
+      "I want to go out tonight",
+      ctx({
+        culturalProfile: {
+          ...consentedProfile,
+          consent: { granted: false, grantedAt: null },
+          lovedEntities: [
+            {
+              id: "550e8400-e29b-41d4-a716-446655440000",
+              name: "Bad Bunny",
+              type: "urn:entity:artist",
+            },
+          ],
+        },
+        searchPlaces,
+      })
+    );
+    expect(searchPlaces).not.toHaveBeenCalled();
+    expect(lovedWithoutConsent.experienceRecommendation?.qlooSource).toBe("skipped");
+  });
+
+  it("sends loved entities with tonight and keeps source qloo", async () => {
+    const entityId = "550e8400-e29b-41d4-a716-446655440000";
+    const searchPlaces = vi.fn(async () =>
+      qlooLive([
+        salsaPlace,
+        { ...salsaPlace, id: "bar-2", name: "Bar Dos", rank: 2 },
+        { ...salsaPlace, id: "bar-3", name: "Bar Tres", rank: 3 },
+      ])
+    );
+    const result = await runLocalAsk(
+      "I want to go out tonight",
+      ctx({
+        culturalProfile: {
+          ...consentedProfile,
+          lovedEntities: [{ id: entityId, name: "Bad Bunny", type: "urn:entity:artist" }],
+        },
+        searchPlaces,
+      })
+    );
+    expect(searchPlaces).toHaveBeenCalledWith(
+      expect.objectContaining({
+        city: "Medellín",
+        entities: [entityId],
+        take: 10,
+      })
+    );
+    expect(result.experienceRecommendation?.qlooSource).toBe("qloo");
+    expect(result.experienceRecommendation?.best?.whyQloo.entities).toEqual(["Bad Bunny"]);
+    expect(result.experienceRecommendation?.best?.source).toBe("qloo");
   });
 
   it("uses the labeled baseline when Qloo is unavailable and never reports source qloo", async () => {

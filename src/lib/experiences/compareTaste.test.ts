@@ -236,4 +236,36 @@ describe("compareTaste", () => {
     await compareTaste(input("Singapore", searchPlaces));
     expect(searchPlaces).toHaveBeenCalledTimes(4);
   });
+
+  it("treats loved entities as taste and caches by city + entities", async () => {
+    const entityId = "550e8400-e29b-41d4-a716-446655440000";
+    const onlyEntities: CulturalProfile = {
+      ...consented,
+      music: [],
+      lovedEntities: [{ id: entityId, name: "Bad Bunny", type: "urn:entity:artist" }],
+    };
+    const searchPlaces = vi.fn(async function (query: QlooPlaceQuery) {
+      if (query.entities && query.entities.length > 0) {
+        return qloo([place("x", "X", 1), place("y", "Y", 2), place("z", "Z", 3)]);
+      }
+      return qloo([place("a", "A", 1), place("b", "B", 2), place("c", "C", 3)]);
+    });
+    const first = await compareTaste(input("Singapore", searchPlaces, onlyEntities));
+    expect(first.kind).toBe("ready");
+    if (first.kind === "ready") {
+      expect(first.signals).toEqual(["Bad Bunny"]);
+      expect(first.withTaste.places[0]?.whyQloo.entities).toEqual(["Bad Bunny"]);
+      expect(first.withTaste.places[0]?.whyQloo.source).toBe("qloo");
+    }
+    expect(searchPlaces).toHaveBeenCalledWith({
+      city: "Singapore",
+      tags: [],
+      entities: [entityId],
+      take: 10,
+    });
+    await compareTaste(input("Singapore", searchPlaces, onlyEntities));
+    expect(searchPlaces).toHaveBeenCalledTimes(2);
+    await compareTaste(input("Lima", searchPlaces, onlyEntities));
+    expect(searchPlaces).toHaveBeenCalledTimes(4);
+  });
 });

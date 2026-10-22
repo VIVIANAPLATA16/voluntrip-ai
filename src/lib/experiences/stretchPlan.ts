@@ -1,5 +1,6 @@
 import {
   getConsentedFilterTagId,
+  getConsentedLovedEntities,
   getConsentedQlooTagIds,
 } from "@/lib/culture/profile";
 import { MOCK_RATES_USD } from "@/lib/constants";
@@ -422,17 +423,29 @@ export function swapStretchNight(
   return finishReady(input, result.pool, result.usedNights, nextBest, nextStretched);
 }
 
-function cacheKey(city: string, signalIds: readonly string[], filterId?: string): string {
-  return [city.trim().toLowerCase(), [...signalIds].sort().join(","), filterId ?? ""].join("|");
+function cacheKey(
+  city: string,
+  signalIds: readonly string[],
+  filterId: string | undefined,
+  entityIds: readonly string[]
+): string {
+  return [
+    city.trim().toLowerCase(),
+    [...signalIds].sort().join(","),
+    filterId ?? "",
+    [...entityIds].sort().join(","),
+  ].join("|");
 }
 
 async function loadQlooExperiences(
   input: RequestStretchPlanInput,
   city: string,
   signalIds: readonly string[],
-  filterId: string | undefined
+  filterId: string | undefined,
+  entityIds: readonly string[],
+  entityNames: readonly string[]
 ): Promise<CachedDiscovery> {
-  const key = cacheKey(city, signalIds, filterId);
+  const key = cacheKey(city, signalIds, filterId, entityIds);
   const hit = cache.get(key);
   if (hit) return hit;
   const pending = inflight.get(key);
@@ -446,6 +459,8 @@ async function loadQlooExperiences(
           city,
           profileTagIds: signalIds,
           filterTagId: filterId,
+          entityIds,
+          entityNames,
           consentGranted: true,
         },
         { searchPlaces: input.searchPlaces, now: input.now }
@@ -461,7 +476,7 @@ async function loadQlooExperiences(
         city,
         source: "unavailable",
         experiences: [],
-        signals: discovery.signals,
+        signals: [...discovery.signals, ...(discovery.entities ?? [])],
         ...(discovery.filter ? { filter: discovery.filter } : {}),
       };
       cache.set(key, miss);
@@ -472,7 +487,7 @@ async function loadQlooExperiences(
         city,
         source: "empty",
         experiences: [],
-        signals: discovery.signals,
+        signals: [...discovery.signals, ...(discovery.entities ?? [])],
         ...(discovery.filter ? { filter: discovery.filter } : {}),
       };
       cache.set(key, empty);
@@ -486,6 +501,7 @@ async function loadQlooExperiences(
       qlooTotal: discovery.qlooTotal,
       signals: discovery.signals,
       filter: discovery.filter,
+      entities: discovery.entities,
       profileTagIds: signalIds,
       intent: "tonight",
       trip: input.trip,
@@ -497,7 +513,7 @@ async function loadQlooExperiences(
       city,
       source: "qloo",
       experiences: qlooOnly(ranked.all),
-      signals: discovery.signals,
+      signals: [...discovery.signals, ...(discovery.entities ?? [])],
       ...(discovery.filter ? { filter: discovery.filter } : {}),
     };
     cache.set(key, stored);
@@ -523,10 +539,17 @@ export async function requestStretchPlan(
 
   const signalIds = getConsentedQlooTagIds(input.culturalProfile);
   const filterId = getConsentedFilterTagId(input.culturalProfile);
+  const loved = getConsentedLovedEntities(input.culturalProfile);
+  const entityIds = loved.map(function (entity) {
+    return entity.id;
+  });
+  const entityNames = loved.map(function (entity) {
+    return entity.name;
+  });
   const nights = clampStretchNights(input.nights);
   const now = input.now ?? new Date();
   const snapshot = buildBudgetSnapshot(input.trip, input.transactions, input.pockets, now);
-  const loaded = await loadQlooExperiences(input, city, signalIds, filterId);
+  const loaded = await loadQlooExperiences(input, city, signalIds, filterId, entityIds, entityNames);
 
   if (loaded.source === "unavailable") return { kind: "unavailable", city };
   if (loaded.source === "empty" || loaded.experiences.length === 0) {

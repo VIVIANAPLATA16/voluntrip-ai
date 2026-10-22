@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateQlooPlaceRequest } from "./request";
+import { validateQlooEntitySearchRequest, validateQlooPlaceRequest } from "./request";
 
 describe("validateQlooPlaceRequest", () => {
   it("accepts a city, optional tags, and take", () => {
@@ -54,5 +54,58 @@ describe("validateQlooPlaceRequest", () => {
         mode: "filter",
       }).ok
     ).toBe(false);
+  });
+
+  it("accepts at most 5 UUID entities and leaves omitted entities unchanged", () => {
+    const id = "550e8400-e29b-41d4-a716-446655440000";
+    expect(
+      validateQlooPlaceRequest({
+        city: "Medellín",
+        tags: ["urn:tag:genre:place:coffee"],
+        entities: [id],
+      })
+    ).toEqual({
+      ok: true,
+      query: {
+        city: "Medellín",
+        tags: ["urn:tag:genre:place:coffee"],
+        entities: [id],
+      },
+    });
+    expect(validateQlooPlaceRequest({ city: "Lima" })).toEqual({
+      ok: true,
+      query: { city: "Lima" },
+    });
+    expect(
+      validateQlooPlaceRequest({
+        city: "Singapore",
+        entities: ["not-a-uuid"],
+      }).ok
+    ).toBe(false);
+    expect(
+      validateQlooPlaceRequest({
+        city: "Singapore",
+        entities: [
+          "550e8400-e29b-41d4-a716-446655440000",
+          "550e8400-e29b-41d4-a716-446655440001",
+          "550e8400-e29b-41d4-a716-446655440002",
+          "550e8400-e29b-41d4-a716-446655440003",
+          "550e8400-e29b-41d4-a716-446655440004",
+          "550e8400-e29b-41d4-a716-446655440005",
+        ],
+      }).ok
+    ).toBe(false);
+  });
+});
+
+describe("validateQlooEntitySearchRequest", () => {
+  it("accepts a query and rejects extras or an empty query", () => {
+    expect(validateQlooEntitySearchRequest({ query: "Bad Bunny" })).toEqual({
+      ok: true,
+      query: { query: "Bad Bunny" },
+    });
+    expect(validateQlooEntitySearchRequest({ query: "  " }).ok).toBe(false);
+    expect(validateQlooEntitySearchRequest({ query: "Bad Bunny", email: "a@b.c" }).ok).toBe(false);
+    expect(validateQlooEntitySearchRequest({ query: "x".repeat(81) }).ok).toBe(false);
   });
 });

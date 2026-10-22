@@ -17,6 +17,7 @@ import { t, type TranslationKey } from "@/lib/i18n/dictionaries";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/appStore";
 import type { CulturalLike, CulturalProfile } from "@/types";
+import { LovedEntitiesField } from "./LovedEntitiesField";
 
 const CATEGORIES: CulturalDnaCategory[] = ["music", "food", "entertainment", "activities"];
 
@@ -213,14 +214,16 @@ export function CulturalDnaCard() {
 
   const setConsent = async (on: boolean) => {
     const now = new Date().toISOString();
-    await persist({
+    const next: CulturalProfile = {
       ...profile,
       consent: {
         granted: on,
         grantedAt: on ? profile.consent.grantedAt ?? now : null,
       },
       updatedAt: now,
-    });
+    };
+    if (!on) delete next.lovedEntities;
+    await persist(next);
   };
 
   const onToggle = async (category: CulturalDnaCategory, tag: CulturalDnaTag) => {
@@ -273,6 +276,14 @@ export function CulturalDnaCard() {
           {granted ? t(locale, "culture.consent_on") : t(locale, "culture.consent_off")}
         </Button>
       </div>
+
+      <LovedEntitiesField
+        profile={profile}
+        granted={granted}
+        onChange={function (next) {
+          void persist(next);
+        }}
+      />
 
       <section className="min-w-0 space-y-2 rounded-2xl border border-border bg-bg-elevated/70 p-3">
         <div className="flex min-w-0 items-center justify-between gap-2">

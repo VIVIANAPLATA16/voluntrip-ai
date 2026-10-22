@@ -64,6 +64,8 @@ export interface CulturalProfile {
   food: CulturalLike[];
   entertainment: CulturalLike[];
   activities: CulturalLike[];
+  /** Optional loved Qloo entities. Present only with consent; omitted on older records. */
+  lovedEntities?: Array<{ id: string; name: string; type: string }>;
   updatedAt: string;
 }
 

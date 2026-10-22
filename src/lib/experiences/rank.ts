@@ -28,6 +28,8 @@ export interface RankExperiencesInput {
   signals?: readonly string[];
   /** Label of the hard Qloo filter.tags, when one was sent. */
   filter?: string;
+  /** Readable names of loved entities sent as signal.interests.entities. */
+  entities?: readonly string[];
   profileTagIds: readonly string[];
   intent: ExperienceIntent;
   trip: Trip;
@@ -87,6 +89,9 @@ export function rankExperiences(input: RankExperiencesInput): RankedExperiences 
         signals: [...(input.signals ?? [])],
         totalResults: total,
         ...(input.filter ? { filter: input.filter } : {}),
+        ...(input.entities && input.entities.length > 0
+          ? { entities: [...input.entities] }
+          : {}),
       },
       whyVoluntrip: {
         estimatedCost,

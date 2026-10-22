@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeInsightsResponse, normalizeTagsResponse } from "./normalize";
+import { normalizeInsightsResponse, normalizeSearchResponse, normalizeTagsResponse } from "./normalize";
 
 const validEntity = {
   name: "Café Pergamino",
@@ -99,6 +99,42 @@ describe("normalizeInsightsResponse", () => {
     expect(places).toHaveLength(1);
     expect(places?.[0]?.id).toBe("AAAA-BBBB");
     expect(places?.[0]?.rank).toBe(3);
+  });
+});
+
+describe("normalizeSearchResponse", () => {
+  const id = "550e8400-e29b-41d4-a716-446655440000";
+
+  it("maps entity_id and types and drops aliases", () => {
+    expect(
+      normalizeSearchResponse({
+        results: [
+          {
+            name: "Bad Bunny",
+            entity_id: id,
+            types: ["urn:entity:artist"],
+            akas: ["Benito"],
+          },
+        ],
+      })
+    ).toEqual([{ id, name: "Bad Bunny", type: "urn:entity:artist" }]);
+  });
+
+  it("skips non-UUID ids and caps at 5", () => {
+    const entities = Array.from({ length: 6 }, function (_, index) {
+      return {
+        name: "Artist " + index,
+        entity_id: `550e8400-e29b-41d4-a716-44665544000${index}`,
+        types: ["urn:entity:artist"],
+      };
+    });
+    entities.push({ name: "Not uuid", entity_id: "LIVE-1", types: ["urn:entity:artist"] });
+    const result = normalizeSearchResponse({ success: true, results: { entities } });
+    expect(result).toHaveLength(5);
+    expect(result?.every(function (item) {
+      return item.id.includes("-");
+    })).toBe(true);
+    expect(JSON.stringify(result)).not.toContain("LIVE-1");
   });
 });
 

@@ -139,6 +139,24 @@ describe("IndexedDB v1 → v2 cultural_profile migration", () => {
 });
 
 describe("cultural profile persistence", () => {
+  it("persists optional lovedEntities on v2 and clears them with the profile", async () => {
+    const withLove: CulturalProfile = {
+      ...cultural,
+      lovedEntities: [
+        {
+          id: "550e8400-e29b-41d4-a716-446655440000",
+          name: "Bad Bunny",
+          type: "urn:entity:artist",
+        },
+      ],
+    };
+    await saveCulturalProfile(withLove);
+    await closeDB();
+    expect(await getCulturalProfile()).toEqual(withLove);
+    await clearCulturalProfile();
+    expect(await getCulturalProfile()).toBeNull();
+  });
+
   it("survives save, close, and reopen", async () => {
     await saveCulturalProfile(cultural);
     await closeDB();

@@ -4,10 +4,13 @@ import type { QlooPlace, QlooResult } from "@/lib/qloo/types";
 import {
   CATEGORY_ESTIMATE_USD,
   PRICE_LEVEL_USD,
+  dedupePlacesByName,
   discoverExperiences,
   estimateExperienceCost,
   financialFit,
+  foldPlaceName,
   getMedellinBaseline,
+  isHotelCandidate,
   rankExperiences,
   rankMedellinBaseline,
 } from "./index";
@@ -279,6 +282,176 @@ describe("discoverExperiences", () => {
     expect(unavailable.source).toBe("unavailable");
     expect(unavailable.candidates).toEqual([]);
     expect(unavailable.signals).toEqual([]);
+  });
+
+  const ENTITY_ID = "550e8400-e29b-41d4-a716-446655440000";
+
+  function lodgingPlace(id: string, name: string, rank: number, tagId: string, tagName: string): QlooPlace {
+    return place({
+      id,
+      name,
+      rank,
+      tags: [{ id: tagId, name: tagName, type: "urn:tag:genre:place" }],
+    });
+  }
+
+  it("does not send entities without consent", async () => {
+    const searchPlaces = vi.fn(async () => qlooResult([]));
+    await discoverExperiences(
+      {
+        city: "Singapore",
+        profileTagIds: PROFILE_TAGS,
+        entityIds: [ENTITY_ID],
+        entityNames: ["Bad Bunny"],
+        consentGranted: false,
+      },
+      { searchPlaces, now }
+    );
+    expect(searchPlaces).toHaveBeenCalledWith({ city: "Singapore", tags: [], take: 10 });
+  });
+
+  it("sends entities with an existing type filter and is city-agnostic", async () => {
+    const filterId = "urn:tag:genre:place:night_club";
+    for (const city of ["Medellín", "Singapore", "Lima"]) {
+      const searchPlaces = vi.fn(async () => qlooResult([]));
+      await discoverExperiences(
+        {
+          city,
+          profileTagIds: PROFILE_TAGS,
+          filterTagId: filterId,
+          entityIds: [ENTITY_ID],
+          entityNames: ["Bad Bunny"],
+          consentGranted: true,
+        },
+        { searchPlaces, now }
+      );
+      expect(searchPlaces).toHaveBeenCalledWith({
+        city,
+        tags: [SALSA],
+        filterTags: [filterId],
+        entities: [ENTITY_ID],
+        take: 10,
+      });
+    }
+  });
+
+  it("dedupes by folded name and strips lodging tags without city name lists", () => {
+    expect(foldPlaceName("Café Pergamino")).toBe("cafe pergamino");
+    expect(
+      dedupePlacesByName([
+        place({ id: "a", name: "Café Pergamino", rank: 1 }),
+        place({ id: "b", name: "Cafe Pergamino", rank: 2 }),
+      ]).map(function (item) {
+        return item.id;
+      })
+    ).toEqual(["a"]);
+    expect(
+      isHotelCandidate({
+        tags: [{ id: "urn:tag:category:place:lodging", name: "Lodging", type: "urn:tag:category:place" }],
+      })
+    ).toBe(true);
+    expect(
+      isHotelCandidate({
+        tags: [{ id: "urn:tag:genre:place:bar", name: "Bar", type: "urn:tag:genre:place" }],
+      })
+    ).toBe(false);
+  });
+
+  it("drops Singapore hotel mixes below 3 after lodging strip when entities are used", async () => {
+    const searchPlaces = vi.fn(async () =>
+      qlooResult([
+        lodgingPlace("mbs", "Marina Bay Sands", 1, "urn:tag:genre:place:hotel", "Hotel"),
+        lodgingPlace("ritz", "The Ritz-Carlton", 2, "urn:tag:category:place:lodging", "Lodging"),
+        lodgingPlace("fullerton", "Fullerton Bay", 3, "urn:tag:genre:place:resort", "Resort"),
+        lodgingPlace("pullman", "Pullman", 4, "urn:tag:category:place:accommodation", "Accommodation"),
+        place({
+          id: "bar-1",
+          name: "Clarke Quay Bar",
+          rank: 5,
+          tags: [{ id: "urn:tag:genre:place:bar", name: "Bar", type: "urn:tag:genre:place" }],
+        }),
+        place({
+          id: "cafe-1",
+          name: "Café Bon",
+          rank: 6,
+          tags: [{ id: "urn:tag:genre:place:cafe", name: "Cafe", type: "urn:tag:genre:place" }],
+        }),
+      ])
+    );
+    const result = await discoverExperiences(
+      {
+        city: "Singapore",
+        profileTagIds: [],
+        entityIds: [ENTITY_ID],
+        entityNames: ["Bad Bunny"],
+        consentGranted: true,
+      },
+      { searchPlaces, now }
+    );
+    expect(result.source).toBe("qloo");
+    expect(result.candidates).toEqual([]);
+    expect(result.entities).toEqual(["Bad Bunny"]);
+    expect(result.qlooTotal).toBe(6);
+  });
+
+  it("keeps a city without hotels when at least 3 places remain", async () => {
+    const searchPlaces = vi.fn(async () =>
+      qlooResult([
+        place({
+          id: "lima-1",
+          name: "Bar Queirolo",
+          rank: 1,
+          tags: [{ id: "urn:tag:genre:place:bar", name: "Bar", type: "urn:tag:genre:place" }],
+        }),
+        place({
+          id: "lima-2",
+          name: "Ayahuasca",
+          rank: 2,
+          tags: [{ id: "urn:tag:genre:place:bar", name: "Bar", type: "urn:tag:genre:place" }],
+        }),
+        place({
+          id: "lima-3",
+          name: "Café Bisetti",
+          rank: 3,
+          tags: [{ id: "urn:tag:genre:place:cafe", name: "Cafe", type: "urn:tag:genre:place" }],
+        }),
+      ])
+    );
+    const result = await discoverExperiences(
+      {
+        city: "Lima",
+        profileTagIds: [],
+        entityIds: [ENTITY_ID],
+        entityNames: ["Bad Bunny"],
+        consentGranted: true,
+      },
+      { searchPlaces, now }
+    );
+    expect(result.source).toBe("qloo");
+    expect(result.candidates.map(function (item) {
+      return item.id;
+    })).toEqual(["lima-1", "lima-2", "lima-3"]);
+  });
+
+  it("does not empty a short list when entities were not sent", async () => {
+    const searchPlaces = vi.fn(async () =>
+      qlooResult([
+        lodgingPlace("hotel", "Hotel Parque 10", 1, "urn:tag:genre:place:hotel", "Hotel"),
+        place({
+          id: "club",
+          name: "El Social Salsa",
+          rank: 2,
+          tags: [{ id: NIGHTLIFE, name: "Nightlife", type: "urn:tag:genre:place" }],
+        }),
+      ])
+    );
+    const result = await discoverExperiences(
+      { city: "Medellín", profileTagIds: PROFILE_TAGS, consentGranted: true },
+      { searchPlaces, now }
+    );
+    expect(result.candidates.map(function (item) {
+      return item.id;
+    })).toEqual(["club"]);
   });
 });
 

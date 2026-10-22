@@ -337,9 +337,11 @@ function WhyStretchPlanSheet({
       <div className="min-w-0 max-w-full space-y-3 overflow-hidden">
         <section className="min-w-0 space-y-1 rounded-2xl border border-border bg-surface/70 p-3">
           <h3 className="text-sm font-semibold break-words">{t(locale, "experience.from_qloo")}</h3>
-          <p className="text-xs text-ink-muted break-words">
-            {t(locale, "experience.signals_sent", { signals: plan.signals.join(", ") })}
-          </p>
+          {plan.signals.length > 0 ? (
+            <p className="text-xs text-ink-muted break-words">
+              {t(locale, "experience.signals_sent", { signals: plan.signals.join(", ") })}
+            </p>
+          ) : null}
           {plan.filter ? (
             <p className="text-xs text-ink-muted break-words">
               {t(locale, "experience.filtered_by", { label: plan.filter })}

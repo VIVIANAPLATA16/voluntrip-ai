@@ -23,8 +23,13 @@ function sheetCopy(whyQloo: WhyQloo, usedBaseline = false): string {
   const lines = [
     t("en", evidence.showAsQloo ? "experience.from_qloo" : "experience.not_from_qloo"),
   ];
-  if (evidence.showAsQloo) {
+  if (evidence.showAsQloo && evidence.signals.length > 0) {
     lines.push(t("en", "experience.signals_sent", { signals: evidence.signals.join(", ") }));
+  }
+  if (evidence.showAsQloo && evidence.entities.length > 0) {
+    lines.push(t("en", "experience.entities_sent", { names: evidence.entities.join(", ") }));
+  }
+  if (evidence.showAsQloo) {
     lines.push(
       t(
         "en",
@@ -118,5 +123,14 @@ describe("qlooEvidenceForSheet", () => {
     expect(withFilter).toContain("Ranked #1 of 10 by Qloo within the filter");
     expect(withFilter).not.toContain("for these signals");
     expect(sheetCopy(why({ source: "demo", filter: "nightlife" }))).not.toContain("Filtered by");
+  });
+
+  it("shows loved entity names on live Qloo results and hides them otherwise", () => {
+    const live = sheetCopy(why({ source: "qloo", entities: ["Bad Bunny"] }));
+    expect(live).toContain("Entities sent to Qloo: Bad Bunny");
+    expect(sheetCopy(why({ source: "demo", entities: ["Bad Bunny"] }))).not.toContain("Bad Bunny");
+    expect(sheetCopy(why({ source: "unavailable", entities: ["Bad Bunny"] }))).not.toContain(
+      "Entities sent to Qloo"
+    );
   });
 });

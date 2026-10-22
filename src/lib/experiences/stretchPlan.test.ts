@@ -473,6 +473,80 @@ describe("requestStretchPlan cities and consent", () => {
     });
     expect(demo.kind).toBe("unavailable");
   });
+
+  it("sends loved entities and empties Singapore hotel mixes below 3", async () => {
+    const entityId = "550e8400-e29b-41d4-a716-446655440000";
+    const withEntities: CulturalProfile = {
+      ...consented,
+      lovedEntities: [{ id: entityId, name: "Bad Bunny", type: "urn:entity:artist" }],
+    };
+    const searchPlaces = vi.fn(async function () {
+      return live([
+        {
+          ...qlooPlace("mbs", "Marina Bay Sands", 1, 4),
+          tags: [{ id: "urn:tag:genre:place:hotel", name: "Hotel", type: "urn:tag:genre:place" }],
+        },
+        {
+          ...qlooPlace("ritz", "The Ritz-Carlton", 2, 4),
+          tags: [{ id: "urn:tag:category:place:lodging", name: "Lodging", type: "urn:tag:category:place" }],
+        },
+        {
+          ...qlooPlace("fullerton", "Fullerton Bay", 3, 4),
+          tags: [{ id: "urn:tag:genre:place:hotel", name: "Hotel", type: "urn:tag:genre:place" }],
+        },
+        {
+          ...qlooPlace("bar", "Clarke Quay Bar", 4, 2),
+          tags: [{ id: "urn:tag:genre:place:bar", name: "Bar", type: "urn:tag:genre:place" }],
+        },
+        {
+          ...qlooPlace("cafe", "Café Bon", 5, 2),
+          tags: [{ id: "urn:tag:genre:place:cafe", name: "Cafe", type: "urn:tag:genre:place" }],
+        },
+      ]);
+    });
+    const empty = await requestStretchPlan({
+      city: "Singapore",
+      nights: 3,
+      trip: { ...trip, city: "Singapore", destination: "Singapore" },
+      transactions: [],
+      pockets,
+      culturalProfile: withEntities,
+      searchPlaces,
+      now,
+    });
+    expect(searchPlaces).toHaveBeenCalledWith({
+      city: "Singapore",
+      tags: [SALSA],
+      entities: [entityId],
+      take: 10,
+    });
+    expect(empty.kind).toBe("empty");
+
+    resetStretchPlanCache();
+    const limaSearch = vi.fn(async function () {
+      return live([
+        qlooPlace("lima-1", "Bar Queirolo", 1, 2),
+        qlooPlace("lima-2", "Ayahuasca", 2, 2),
+        qlooPlace("lima-3", "Café Bisetti", 3, 1),
+      ]);
+    });
+    const lima = await requestStretchPlan({
+      city: "Lima",
+      nights: 3,
+      trip: { ...trip, city: "Lima", destination: "Lima" },
+      transactions: [],
+      pockets,
+      culturalProfile: withEntities,
+      searchPlaces: limaSearch,
+      now,
+    });
+    expect(lima.kind).toBe("ready");
+    if (lima.kind === "ready") {
+      expect(lima.signals).toEqual(["salsa", "Bad Bunny"]);
+      expect(lima.best.nights[0]?.place.whyQloo.entities).toEqual(["Bad Bunny"]);
+      expect(lima.best.nights[0]?.place.source).toBe("qloo");
+    }
+  });
 });
 
 describe("demo clock", () => {

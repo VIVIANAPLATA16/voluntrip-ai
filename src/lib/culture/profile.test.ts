@@ -3,7 +3,9 @@ import type { CulturalProfile } from "@/types";
 import {
   emptyCulturalProfile,
   getConsentedFilterTagId,
+  getConsentedLovedEntities,
   getConsentedQlooTagIds,
+  hasConsentedTaste,
   toStoredCulturalProfile,
 } from "./profile";
 
@@ -71,6 +73,32 @@ describe("getConsentedQlooTagIds", () => {
   });
 });
 
+const BAD_BUNNY = {
+  id: "550e8400-e29b-41d4-a716-446655440000",
+  name: "Bad Bunny",
+  type: "urn:entity:artist",
+};
+
+describe("getConsentedLovedEntities", () => {
+  it("returns [] without consent and does not treat entities as taste", () => {
+    const withEntities = profile({
+      consent: { granted: false, grantedAt: null },
+      lovedEntities: [BAD_BUNNY],
+    });
+    expect(getConsentedLovedEntities(withEntities)).toEqual([]);
+    expect(hasConsentedTaste(withEntities)).toBe(false);
+  });
+
+  it("returns consented UUID entities and counts them as taste", () => {
+    const withEntities = profile({
+      consent: { granted: true, grantedAt: "2026-10-19T00:00:00.000Z" },
+      lovedEntities: [BAD_BUNNY, { id: "not-a-uuid", name: "Skip", type: "urn:entity:artist" }],
+    });
+    expect(getConsentedLovedEntities(withEntities)).toEqual([BAD_BUNNY]);
+    expect(hasConsentedTaste(withEntities)).toBe(true);
+  });
+});
+
 describe("toStoredCulturalProfile", () => {
   it("does not invent qlooTagId values and drops extra identity fields", () => {
     const stored = toStoredCulturalProfile(
@@ -87,5 +115,23 @@ describe("toStoredCulturalProfile", () => {
     expect(stored).not.toHaveProperty("email");
     expect(stored).not.toHaveProperty("displayName");
     expect(stored).not.toHaveProperty("deviceId");
+  });
+
+  it("keeps lovedEntities only with consent", () => {
+    const granted = toStoredCulturalProfile(
+      profile({
+        consent: { granted: true, grantedAt: "2026-10-19T00:00:00.000Z" },
+        lovedEntities: [BAD_BUNNY],
+      })
+    );
+    expect(granted.lovedEntities).toEqual([BAD_BUNNY]);
+
+    const denied = toStoredCulturalProfile(
+      profile({
+        consent: { granted: false, grantedAt: null },
+        lovedEntities: [BAD_BUNNY],
+      })
+    );
+    expect(denied.lovedEntities).toBeUndefined();
   });
 });

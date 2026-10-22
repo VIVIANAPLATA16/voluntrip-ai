@@ -86,6 +86,36 @@ describe("POST /api/qloo", () => {
     });
   });
 
+  it("forwards UUID entities to Qloo insights", async () => {
+    const id = "550e8400-e29b-41d4-a716-446655440000";
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          results: {
+            entities: [
+              {
+                name: "Plaza Botero",
+                entity_id: "LIVE-1",
+                tags: null,
+                properties: { price_level: null },
+              },
+            ],
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    const res = await POST(
+      request({ city: "Medellín", entities: [id], tags: ["urn:tag:genre:music:salsa"] })
+    );
+    expect(res.status).toBe(200);
+    const [url] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("signal.interests.entities=");
+    expect(url).toContain(encodeURIComponent(id));
+    expect(url).toContain("signal.interests.tags=");
+  });
+
   it("returns labeled demo when no key is configured", async () => {
     delete process.env.QLOO_API_KEY;
     const res = await POST(request({ city: "Medellín" }));

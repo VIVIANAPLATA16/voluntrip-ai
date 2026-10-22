@@ -28,6 +28,7 @@ export function readableQlooTagLabel(id: string): string {
 export type QlooEvidenceForSheet = {
   showAsQloo: boolean;
   signals: string[];
+  entities: string[];
   filter: string | null;
   rank: number;
   totalResults: number;
@@ -45,6 +46,7 @@ export function qlooEvidenceForSheet(
   return {
     showAsQloo,
     signals: showAsQloo ? why.signals : [],
+    entities: showAsQloo ? why.entities ?? [] : [],
     filter: showAsQloo && why.filter ? why.filter : null,
     rank: why.rank,
     totalResults: why.totalResults,

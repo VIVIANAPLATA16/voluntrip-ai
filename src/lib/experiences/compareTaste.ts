@@ -1,6 +1,8 @@
 import {
   getConsentedFilterTagId,
+  getConsentedLovedEntities,
   getConsentedQlooTagIds,
+  hasConsentedTaste,
 } from "@/lib/culture/profile";
 import type { CulturalProfile, Pocket, Transaction, Trip } from "@/types";
 import type { QlooPlaceQuery, QlooResult } from "@/lib/qloo/types";
@@ -48,7 +50,7 @@ export function resetCompareTasteCache(): void {
 }
 
 export function canCompareTaste(profile: CulturalProfile | null | undefined): boolean {
-  return hasTaste(profile ?? null);
+  return hasConsentedTaste(profile);
 }
 
 export function normalizePlaceKey(place: { id: string; name: string }): string {
@@ -74,13 +76,18 @@ export function countChangedPlaces(
   return Math.min(TOP, Math.max(onlyLeft, onlyRight));
 }
 
-function cacheKey(city: string, signalIds: readonly string[], filterId?: string): string {
-  return [city.trim().toLowerCase(), [...signalIds].sort().join(","), filterId ?? ""].join("|");
-}
-
-function hasTaste(profile: CulturalProfile | null): boolean {
-  if (!profile?.consent.granted) return false;
-  return getConsentedQlooTagIds(profile).length > 0 || Boolean(getConsentedFilterTagId(profile));
+function cacheKey(
+  city: string,
+  signalIds: readonly string[],
+  filterId: string | undefined,
+  entityIds: readonly string[]
+): string {
+  return [
+    city.trim().toLowerCase(),
+    [...signalIds].sort().join(","),
+    filterId ?? "",
+    [...entityIds].sort().join(","),
+  ].join("|");
 }
 
 function unavailableDiscovery(now?: Date): DiscoveryResult {
@@ -133,6 +140,7 @@ function columnFromDiscovery(
     qlooTotal: discovery.qlooTotal,
     signals: discovery.signals,
     filter: discovery.filter,
+    entities: discovery.entities,
     profileTagIds,
     intent: "tonight",
     trip: input.trip,
@@ -152,13 +160,20 @@ function columnFromDiscovery(
 export async function compareTaste(input: CompareTasteInput): Promise<CompareTasteResult> {
   const city = input.city.trim();
   const profile = input.culturalProfile;
-  if (!hasTaste(profile)) {
+  if (!hasConsentedTaste(profile)) {
     return { kind: "needs_consent", city };
   }
 
   const signalIds = getConsentedQlooTagIds(profile);
   const filterId = getConsentedFilterTagId(profile);
-  const key = cacheKey(city, signalIds, filterId);
+  const loved = getConsentedLovedEntities(profile);
+  const entityIds = loved.map(function (entity) {
+    return entity.id;
+  });
+  const entityNames = loved.map(function (entity) {
+    return entity.name;
+  });
+  const key = cacheKey(city, signalIds, filterId, entityIds);
   const hit = cache.get(key);
   if (hit) return hit;
   const pending = inflight.get(key);
@@ -175,6 +190,8 @@ export async function compareTaste(input: CompareTasteInput): Promise<CompareTas
           city,
           profileTagIds: signalIds,
           filterTagId: filterId,
+          entityIds,
+          entityNames,
           consentGranted: true,
         },
         { searchPlaces: input.searchPlaces, now: input.now }
@@ -194,7 +211,7 @@ export async function compareTaste(input: CompareTasteInput): Promise<CompareTas
       without,
       withTaste,
       changedCount,
-      signals: withDiscovery.signals,
+      signals: [...withDiscovery.signals, ...(withDiscovery.entities ?? [])],
     };
     cache.set(key, result);
     return result;

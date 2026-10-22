@@ -51,10 +51,17 @@ export function WhyThisSheet({
           <h3 className="text-sm font-semibold break-words">
             {t(locale, evidence.showAsQloo ? "experience.from_qloo" : "experience.not_from_qloo")}
           </h3>
-          {evidence.showAsQloo ? (
+          {evidence.showAsQloo && evidence.signals.length > 0 ? (
             <p className="text-xs text-ink-muted break-words">
               {t(locale, "experience.signals_sent", {
                 signals: evidence.signals.join(", "),
+              })}
+            </p>
+          ) : null}
+          {evidence.showAsQloo && evidence.entities.length > 0 ? (
+            <p className="text-xs text-ink-muted break-words">
+              {t(locale, "experience.entities_sent", {
+                names: evidence.entities.join(", "),
               })}
             </p>
           ) : null}
