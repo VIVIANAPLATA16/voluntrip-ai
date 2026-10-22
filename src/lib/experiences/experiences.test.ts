@@ -728,6 +728,30 @@ describe("discoverExperiences", () => {
       return item.id;
     })).toEqual(["bar-1", "bar-2"]);
   });
+
+  it("keeps live Qloo places that have no tags", async () => {
+    const untagged = {
+      ...place({ id: "lluvia", name: "Lluvia", rank: 1 }),
+      tags: null as unknown as QlooPlace["tags"],
+    };
+    const searchPlaces = vi.fn(async () =>
+      qlooResult([untagged, barPlace("bar-1", "Ayahuasca", 2), barPlace("bar-2", "Bar Queirolo", 3)])
+    );
+    const result = await discoverExperiences(
+      {
+        city: "Medellín",
+        profileTagIds: [],
+        entityIds: [ENTITY_ID],
+        entityNames: ["Bad Bunny"],
+        consentGranted: true,
+      },
+      { searchPlaces, now }
+    );
+    expect(result.source).toBe("qloo");
+    expect(result.candidates.map(function (item) {
+      return item.id;
+    })).toEqual(["lluvia", "bar-1", "bar-2"]);
+  });
 });
 
 describe("isNonTouristCandidate", () => {
@@ -774,6 +798,97 @@ describe("isNonTouristCandidate", () => {
     expect(isNonTouristCandidate({ name: "Universidad Jaime Bausate y Meza", tags: [] })).toBe(
       false
     );
+  });
+
+  it("filters category:place:college", () => {
+    expect(
+      isNonTouristCandidate(
+        tagged("urn:tag:category:place:college", "Universidad Jaime Bausate y Meza")
+      )
+    ).toBe(true);
+  });
+
+  it("does not treat residential setting or neighborhood tags as place type", () => {
+    expect(
+      isNonTouristCandidate({
+        name: "Casa Museo Pablo Escobar",
+        tags: [
+          { id: "urn:tag:category:place:museum", name: "Museum", type: "urn:tag:category:place" },
+          {
+            id: "urn:tag:setting:qloo:residential_area",
+            name: "Residential area",
+            type: "urn:tag:setting:qloo",
+          },
+        ],
+      })
+    ).toBe(false);
+    expect(
+      isNonTouristCandidate({
+        name: "Edificio Monaco",
+        tags: [
+          {
+            id: "urn:tag:category:place:historical_landmark",
+            name: "Historical landmark",
+            type: "urn:tag:category:place",
+          },
+          {
+            id: "urn:tag:setting:qloo:residential_area",
+            name: "Residential area",
+            type: "urn:tag:setting:qloo",
+          },
+        ],
+      })
+    ).toBe(false);
+    expect(
+      isNonTouristCandidate({
+        name: "Smh",
+        tags: [
+          { id: "urn:tag:genre:place:restaurant", name: "Restaurant", type: "urn:tag:genre:place" },
+          {
+            id: "urn:tag:setting:qloo:residential_area",
+            name: "Residential area",
+            type: "urn:tag:setting:qloo",
+          },
+        ],
+      })
+    ).toBe(false);
+    expect(
+      isNonTouristCandidate({
+        name: "Smh",
+        tags: [
+          { id: "urn:tag:genre:place:restaurant", name: "Restaurant", type: "urn:tag:genre:place" },
+          {
+            id: "urn:tag:neighborhood_characteristic:qloo:residential",
+            name: "Residential",
+            type: "urn:tag:neighborhood_characteristic:qloo",
+          },
+        ],
+      })
+    ).toBe(false);
+  });
+
+  it("ignores amenity and interests tags even if a later part looks like a marker", () => {
+    expect(
+      isNonTouristCandidate({
+        name: "Library cafe",
+        tags: [{ id: "urn:tag:amenity:qloo:library", name: "Library", type: "urn:tag:amenity:qloo" }],
+      })
+    ).toBe(false);
+    expect(
+      isNonTouristCandidate({
+        name: "History hall",
+        tags: [
+          { id: "urn:tag:interests:qloo:history", name: "History", type: "urn:tag:interests:qloo" },
+        ],
+      })
+    ).toBe(false);
+  });
+
+  it("does not filter or throw when tags are null, undefined, or empty", () => {
+    expect(isNonTouristCandidate({ name: "Parque Lleras", tags: null })).toBe(false);
+    expect(isNonTouristCandidate({ name: "Parque Lleras", tags: undefined })).toBe(false);
+    expect(isNonTouristCandidate({ name: "Parque Lleras", tags: [] })).toBe(false);
+    expect(isNonTouristCandidate({ name: "Parque Lleras" })).toBe(false);
   });
 });
 
