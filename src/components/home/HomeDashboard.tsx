@@ -18,6 +18,7 @@ import type { AIInsight } from "@/types";
 import { WifiOff } from "lucide-react";
 import { CulturalDnaCard } from "@/components/culture/CulturalDnaCard";
 import { TonightMatch } from "@/components/experiences/TonightMatch";
+import { StretchPlanCard } from "@/components/experiences/StretchPlanCard";
 
 export function HomeDashboard() {
   const trip = useAppStore((s) => s.trip);
@@ -103,6 +104,7 @@ export function HomeDashboard() {
       />
 
       <TonightMatch />
+      <StretchPlanCard />
       <CulturalDnaCard />
 
       <div className="rounded-card border border-border bg-surface/70 p-4">

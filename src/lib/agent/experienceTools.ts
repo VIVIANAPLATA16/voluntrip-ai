@@ -2,9 +2,11 @@ import type { CulturalProfile } from "@/types";
 import { getConsentedFilterTagId, getConsentedQlooTagIds } from "@/lib/culture/profile";
 import {
   GENERIC_BASELINE_LABEL,
+  clampStretchNights,
   discoverExperiences,
   rankExperiences,
   rankMedellinBaseline,
+  requestStretchPlan,
 } from "@/lib/experiences";
 import type { ExperienceIntent } from "@/lib/experiences";
 import { fetchQlooPlaces } from "@/lib/qloo/apiFetch";
@@ -18,6 +20,7 @@ export const CULTURAL_TOOL_NAMES = [
   "recommendExperience",
   "explainRecommendation",
   "findBetterOption",
+  "planStretch",
 ] as const;
 
 export type CulturalToolName = (typeof CULTURAL_TOOL_NAMES)[number];
@@ -230,6 +233,28 @@ export function findBetterOption(
   });
 }
 
+export async function planStretch(
+  args: Record<string, unknown>,
+  ctx: AgentContext
+): Promise<ToolResult> {
+  if (!ctx.trip) return { ok: false, error: "No active trip", mutation: { type: "none" } };
+  const city = String(args.city || ctx.trip.city || "").trim();
+  if (!city) return { ok: false, error: "city is required", mutation: { type: "none" } };
+  const now = resolveBudgetNow(ctx.trip, ctx.now);
+  const trip = alignDemoTripForBudget(ctx.trip, now);
+  const result = await requestStretchPlan({
+    city,
+    nights: clampStretchNights(args.nights),
+    trip,
+    transactions: ctx.transactions,
+    pockets: ctx.pockets,
+    culturalProfile: ctx.culturalProfile ?? null,
+    searchPlaces: resolveSearchPlaces(ctx),
+    now,
+  });
+  return noMutation(result);
+}
+
 export async function executeToolAsync(
   name: ToolName,
   args: Record<string, unknown>,
@@ -242,6 +267,8 @@ export async function executeToolAsync(
       return explainRecommendation(args, ctx);
     case "findBetterOption":
       return findBetterOption(args, ctx);
+    case "planStretch":
+      return planStretch(args, ctx);
     default:
       return executeTool(name, args, ctx);
   }

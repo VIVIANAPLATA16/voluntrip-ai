@@ -1,9 +1,9 @@
 import { formatMoney } from "@/lib/constants";
 import { GENERIC_BASELINE_LABEL } from "@/lib/experiences";
+import type { Experience, StretchPlanResult } from "@/lib/experiences";
 import { t, type Locale } from "@/lib/i18n/dictionaries";
 import type { ToolResult } from "./tools";
-import type { ExperienceRecommendationPayload } from "./types";
-import type { Experience } from "@/lib/experiences";
+import type { ExperienceRecommendationPayload, NaviResponse } from "./types";
 
 function estimatedCostLabel(locale: Locale, experience: Experience): string {
   return t(locale, "navi.experience.estimated_cost", {
@@ -92,13 +92,99 @@ function recommendBody(locale: Locale, payload: ExperienceRecommendationPayload)
     .join("\n\n");
 }
 
+export function formatStretchPlanReply(locale: Locale, plan: StretchPlanResult): string {
+  if (plan.kind === "needs_consent") return t(locale, "stretch.needs_consent");
+  if (plan.kind === "unavailable") return t(locale, "stretch.unavailable");
+  if (plan.kind === "empty") return t(locale, "stretch.empty", { city: plan.city });
+
+  const bestNames = plan.best.nights
+    .map(function (night) {
+      return night.place.name;
+    })
+    .join(", ");
+  const stretchedNames = plan.stretched.nights
+    .map(function (night) {
+      return night.place.name;
+    })
+    .join(", ");
+  const bestTotal = formatMoney(plan.best.totalDisplay, plan.best.displayCurrency, { showCode: true });
+  const stretchedTotal = formatMoney(
+    plan.stretched.totalDisplay,
+    plan.stretched.displayCurrency,
+    { showCode: true }
+  );
+  const savings = formatMoney(plan.savingsDisplay, plan.displayCurrency, { showCode: true });
+  const days =
+    plan.rateAvailable && plan.daysEquivalent !== null
+      ? t(locale, "stretch.days_equiv", { days: plan.daysEquivalent })
+      : "";
+  const first = plan.stretched.nights[0]?.place;
+  const sim = plan.stretched.simulation;
+
+  return [
+    t(locale, "navi.stretch.headline", { city: plan.city, nights: plan.usedNights }),
+    t(locale, "navi.stretch.best", { names: bestNames, total: bestTotal }),
+    t(locale, "navi.stretch.stretched", { names: stretchedNames, total: stretchedTotal }),
+    plan.identical
+      ? t(locale, "stretch.identical")
+      : t(locale, "navi.stretch.savings", { savings: savings, days: days }),
+    plan.shortened
+      ? t(locale, "stretch.shortened", { used: plan.usedNights, requested: plan.requestedNights })
+      : "",
+    plan.bothUnaffordable ? t(locale, "stretch.unaffordable") : "",
+    first
+      ? t(locale, "navi.experience.from_qloo", {
+          tags: first.whyQloo.matchedTags.join(", ") || t(locale, "navi.experience.no_matched_tags"),
+          rank: first.whyQloo.rank,
+          source: first.whyQloo.source,
+        })
+      : "",
+    t(locale, "navi.experience.from_voluntrip", {
+      cost: stretchedTotal,
+      dailyBefore: formatMoney(sim.dailyBudgetBefore, plan.displayCurrency),
+      dailyAfter: formatMoney(sim.dailyBudgetAfter, plan.displayCurrency),
+      protected: sim.affordable
+        ? t(locale, "navi.experience.protected_yes")
+        : t(locale, "navi.experience.protected_no"),
+      runway: t(locale, "status.on_track"),
+    }),
+    t(locale, "navi.experience.simulate_hint"),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/** Local and Azure both copy numbers from the plan object — the model does not recalculate. */
+export function applyStretchPlanToNaviResponse(
+  locale: Locale,
+  response: NaviResponse,
+  plan: StretchPlanResult
+): NaviResponse {
+  return {
+    ...response,
+    stretchPlan: plan,
+    mutations: (response.mutations ?? []).filter(function (mutation) {
+      return mutation.type !== "transaction";
+    }),
+    pendingTransaction: undefined,
+    message: {
+      ...response.message,
+      content: formatStretchPlanReply(locale, plan),
+    },
+  };
+}
+
 export function formatExperienceToolReply(
   locale: Locale,
-  tool: "recommendExperience" | "explainRecommendation" | "findBetterOption",
+  tool: "recommendExperience" | "explainRecommendation" | "findBetterOption" | "planStretch",
   result: ToolResult
 ): string {
   if (!result.ok) {
     return result.error || t(locale, "navi.experience.no_best");
+  }
+
+  if (tool === "planStretch") {
+    return formatStretchPlanReply(locale, result.data as StretchPlanResult);
   }
 
   if (tool === "recommendExperience") {

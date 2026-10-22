@@ -4,6 +4,8 @@
  */
 
 import type { AgentMessage } from "@/types";
+import { applyStretchPlanToNaviResponse } from "@/lib/agent/experienceReply";
+import type { StretchPlanResult } from "@/lib/experiences";
 import type { ExperienceRecommendationPayload, NaviResponse } from "@/lib/agent/types";
 import { attachAffordSimulation } from "@/lib/agent/affordSimulation";
 import { runLocalAsk } from "@/lib/agent/localAsk";
@@ -236,6 +238,16 @@ export async function callAzureOpenAI(params: {
     );
     if (rec) {
       response.experienceRecommendation = rec.result.data as ExperienceRecommendationPayload;
+    }
+    const stretch = executedTools.find(
+      (tool) => tool.name === "planStretch" && tool.result.ok
+    );
+    if (stretch?.result.data) {
+      return applyStretchPlanToNaviResponse(
+        locale,
+        attachAffordSimulation(params.userText, tripContext, response),
+        stretch.result.data as StretchPlanResult
+      );
     }
     return attachAffordSimulation(params.userText, tripContext, response);
   }

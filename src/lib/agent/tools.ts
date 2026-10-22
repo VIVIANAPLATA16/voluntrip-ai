@@ -57,7 +57,8 @@ export type ToolName =
   | "generateFinancialInsight"
   | "recommendExperience"
   | "explainRecommendation"
-  | "findBetterOption";
+  | "findBetterOption"
+  | "planStretch";
 
 export interface ToolResult {
   ok: boolean;
@@ -279,6 +280,21 @@ export const toolDefinitions: ToolDefinition[] = [
       "Return a cheaper alternative with culturalFit >= 60, or say none exists. Never records a purchase.",
     parameters: emptyParams,
   },
+  {
+    name: "planStretch",
+    description:
+      "Build a multi-night stretch plan from live Qloo places for the trip city. Same Cultural DNA for Best match and Stretched. Never records a purchase. Do not invent totals — copy numbers from the tool result.",
+    parameters: {
+      type: "object",
+      properties: {
+        nights: {
+          type: "number",
+          enum: [2, 3, 5],
+          description: "Nights to plan. Defaults to 3. Never more than remaining trip days.",
+        },
+      },
+    },
+  },
 ];
 
 /** OpenAI / Azure function-calling tool definitions */
@@ -470,6 +486,7 @@ export function executeTool(
       case "recommendExperience":
       case "explainRecommendation":
       case "findBetterOption":
+      case "planStretch":
         return {
           ok: false,
           error: `${name} must be executed asynchronously`,

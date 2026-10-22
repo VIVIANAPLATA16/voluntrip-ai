@@ -4,7 +4,10 @@ import type { QlooPlace, QlooResult } from "@/lib/qloo/types";
 import { executeTool } from "./tools";
 import { executeToolAsync, isMedellinCity, recommendExperience } from "./experienceTools";
 import { detectLocalAskIntent, runLocalAsk } from "./localAsk";
-import { GENERIC_BASELINE_LABEL } from "@/lib/experiences";
+import { applyStretchPlanToNaviResponse, formatStretchPlanReply } from "./experienceReply";
+import { buildNaviResponse } from "./responseBuilder";
+import { GENERIC_BASELINE_LABEL, resetStretchPlanCache } from "@/lib/experiences";
+import type { StretchPlanResult } from "@/lib/experiences";
 
 const SALSA = "urn:tag:genre:music:salsa";
 const NIGHTLIFE = "urn:tag:genre:place:nightlife";
@@ -324,5 +327,69 @@ describe("city-scoped baseline", () => {
     expect(payload.qlooSource).toBe("unavailable");
     expect(payload.best?.name).toBe("Cerro Nutibara lookout");
     expect(payload.best?.source).not.toBe("qloo");
+  });
+});
+
+describe("planStretch NAVI", () => {
+  const places: QlooPlace[] = [
+    salsaPlace,
+    { ...salsaPlace, id: "two", name: "Cafe Dos", priceLevel: 1, rank: 2 },
+    { ...salsaPlace, id: "three", name: "Bar Tres", priceLevel: 4, rank: 3 },
+  ];
+
+  it("detects stretch phrases in en, es, and pt", () => {
+    expect(detectLocalAskIntent("stretch my trip").intent).toBe("stretch");
+    expect(detectLocalAskIntent("plan 3 nights").intent).toBe("stretch");
+    expect(detectLocalAskIntent("armar plan").intent).toBe("stretch");
+    expect(detectLocalAskIntent("planea mis próximas noches").intent).toBe("stretch");
+    expect(detectLocalAskIntent("planeje minhas noites").intent).toBe("stretch");
+  });
+
+  it("never creates a transaction and copies numbers from the plan object", async () => {
+    resetStretchPlanCache();
+    const searchPlaces = vi.fn(async () => qlooLive(places));
+    const tool = await executeToolAsync("planStretch", { nights: 3 }, ctx({ searchPlaces }));
+    expect(tool.ok).toBe(true);
+    expect(tool.mutation?.type).toBe("none");
+
+    resetStretchPlanCache();
+    const local = await runLocalAsk("stretch my trip", ctx({ searchPlaces }));
+    expect(local.mutations).toEqual([]);
+    expect(local.pendingTransaction).toBeUndefined();
+    expect(local.stretchPlan?.kind).toBe("ready");
+    if (local.stretchPlan?.kind !== "ready") return;
+    expect(local.message.content).toBe(formatStretchPlanReply("en", local.stretchPlan));
+    expect(local.message.content).toContain(String(local.stretchPlan.best.totalDisplay));
+    expect(local.message.content).not.toMatch(/lasts .* more days/i);
+  });
+
+  it("does not query Qloo without consent", async () => {
+    resetStretchPlanCache();
+    const searchPlaces = vi.fn();
+    const local = await runLocalAsk("armar plan", ctx({
+      locale: "es",
+      culturalProfile: { ...consentedProfile, consent: { granted: false, grantedAt: null } },
+      searchPlaces,
+    }));
+    expect(searchPlaces).not.toHaveBeenCalled();
+    expect(local.stretchPlan?.kind).toBe("needs_consent");
+  });
+
+  it("replaces invented Azure text with the plan object numbers", async () => {
+    resetStretchPlanCache();
+    const searchPlaces = vi.fn(async () => qlooLive(places));
+    const tool = await executeToolAsync("planStretch", { nights: 3 }, ctx({ searchPlaces }));
+    const plan = tool.data as StretchPlanResult;
+    const invented = buildNaviResponse({
+      userText: "stretch my trip",
+      assistantContent: "Your trip lasts 9 more days and the plan costs $9999.",
+      executedTools: [],
+      locale: "en",
+    });
+    const applied = applyStretchPlanToNaviResponse("en", invented, plan);
+    expect(applied.message.content).toBe(formatStretchPlanReply("en", plan));
+    expect(applied.message.content).not.toMatch(/9999/);
+    expect(applied.message.content).not.toMatch(/lasts 9 more days/);
+    expect(applied.stretchPlan).toBe(plan);
   });
 });
