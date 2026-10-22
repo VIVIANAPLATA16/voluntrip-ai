@@ -1,5 +1,9 @@
 import type { CulturalProfile } from "@/types";
-import { getConsentedFilterTagId, getConsentedQlooTagIds } from "@/lib/culture/profile";
+import {
+  getConsentedFilterTagId,
+  getConsentedLovedEntities,
+  getConsentedQlooTagIds,
+} from "@/lib/culture/profile";
 import {
   GENERIC_BASELINE_LABEL,
   clampStretchNights,
@@ -124,11 +128,18 @@ export async function recommendExperience(
   }
 
   const filterTagId = getConsentedFilterTagId(profile);
+  const loved = getConsentedLovedEntities(profile);
   const discovered = await discoverExperiences(
     {
       city,
       profileTagIds: rankInput.profileTagIds,
       filterTagId,
+      entityIds: loved.map(function (entity) {
+        return entity.id;
+      }),
+      entityNames: loved.map(function (entity) {
+        return entity.name;
+      }),
       consentGranted: true,
     },
     { searchPlaces: resolveSearchPlaces(ctx), now }
@@ -178,6 +189,7 @@ export async function recommendExperience(
     qlooTotal: discovered.qlooTotal,
     signals: discovered.signals,
     filter: discovered.filter,
+    entities: discovered.entities,
   });
 
   return noMutation({

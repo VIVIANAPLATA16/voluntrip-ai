@@ -5,8 +5,14 @@
  */
 
 import { getDemoPlaces } from "./demo";
-import { normalizeInsightsResponse, normalizeTagsResponse } from "./normalize";
+import {
+  normalizeInsightsResponse,
+  normalizeSearchResponse,
+  normalizeTagsResponse,
+} from "./normalize";
 import type {
+  QlooEntitiesResult,
+  QlooEntitySearchQuery,
   QlooPlaceQuery,
   QlooResult,
   QlooTagQuery,
@@ -16,6 +22,7 @@ import type {
 import {
   QLOO_DEFAULT_BASE_URL,
   QLOO_DEFAULT_TIMEOUT_MS,
+  QLOO_MAX_ENTITIES,
   QLOO_MAX_TAKE,
   QLOO_MIN_TAKE,
 } from "./types";
@@ -48,6 +55,17 @@ function tagsUnavailable(
   reason: QlooUnavailableReason
 ): Extract<QlooTagsResult, { source: "unavailable" }> {
   return { source: "unavailable", tags: [], reason };
+}
+
+function entitiesUnavailable(
+  reason: QlooUnavailableReason
+): Extract<QlooEntitiesResult, { source: "unavailable" }> {
+  return { source: "unavailable", entities: [], reason };
+}
+
+function clampEntityTake(take: number | undefined): number {
+  const n = typeof take === "number" && Number.isInteger(take) ? take : QLOO_MAX_ENTITIES;
+  return Math.min(QLOO_MAX_ENTITIES, Math.max(QLOO_MIN_TAKE, n));
 }
 
 function reasonFromStatus(status: number): QlooUnavailableReason {
@@ -118,7 +136,18 @@ function insightsPath(query: QlooPlaceQuery): string {
   if (filterTags.length > 0) {
     params.set("filter.tags", filterTags[0] ?? "");
   }
+  const entities = (query.entities ?? []).map((id) => id.trim()).filter(Boolean);
+  if (entities.length > 0) {
+    params.set("signal.interests.entities", entities.join(","));
+  }
   return `/v2/insights?${params.toString()}`;
+}
+
+function searchPath(query: QlooEntitySearchQuery): string {
+  const params = new URLSearchParams();
+  params.set("query", query.query.trim());
+  params.set("take", String(clampEntityTake(query.take)));
+  return `/search?${params.toString()}`;
 }
 
 function tagsPath(query: QlooTagQuery): string {
@@ -166,4 +195,26 @@ export async function searchQlooTags(
   if (tags == null) return tagsUnavailable("QLOO_BAD_RESPONSE");
 
   return { source: "qloo", tags };
+}
+
+export async function searchQlooEntities(
+  query: QlooEntitySearchQuery,
+  options: QlooClientOptions = {}
+): Promise<QlooEntitiesResult> {
+  if (!getApiKey()) {
+    return { source: "demo", entities: [], reason: "NO_KEY" };
+  }
+
+  const result = await qlooGet(searchPath(query), options);
+  if (!result.ok) {
+    if (result.reason === "NO_KEY") {
+      return { source: "demo", entities: [], reason: "NO_KEY" };
+    }
+    return entitiesUnavailable(result.reason);
+  }
+
+  const entities = normalizeSearchResponse(result.payload);
+  if (entities == null) return entitiesUnavailable("QLOO_BAD_RESPONSE");
+
+  return { source: "qloo", entities };
 }

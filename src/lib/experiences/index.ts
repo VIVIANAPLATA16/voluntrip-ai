@@ -19,6 +19,8 @@ export {
 } from "./compareTaste";
 export {
   discoverExperiences,
+  dedupePlacesByName,
+  foldPlaceName,
   isHotelCandidate,
   HOTEL_TAG_PREFIXES,
   type DiscoverExperiencesInput,

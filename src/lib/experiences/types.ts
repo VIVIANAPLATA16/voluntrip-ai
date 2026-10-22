@@ -17,6 +17,8 @@ export interface WhyQloo {
   totalResults: number;
   /** Label of the hard Qloo filter.tags, when one was sent. */
   filter?: string;
+  /** Readable names of loved entities sent as signal.interests.entities. */
+  entities?: string[];
 }
 
 export interface WhyVoluntrip {
@@ -62,4 +64,6 @@ export interface DiscoveryResult {
   qlooTotal: number;
   signals: string[];
   filter?: string;
+  /** Readable names of loved entities sent with this query. */
+  entities?: string[];
 }

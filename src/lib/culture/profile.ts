@@ -1,5 +1,6 @@
 import type { CulturalLike, CulturalProfile } from "@/types";
 import * as db from "@/lib/db/indexeddb";
+import { QLOO_ENTITY_UUID, QLOO_MAX_ENTITIES } from "@/lib/qloo/types";
 import { findCulturalDnaTag, isRetiredSignalTagId } from "./tagMap";
 
 export const CULTURAL_PROFILE_ID = "default" as const;
@@ -34,7 +35,7 @@ export function toStoredCulturalProfile(
   now: string = new Date().toISOString()
 ): CulturalProfile {
   const granted = Boolean(input.consent?.granted);
-  return {
+  const stored: CulturalProfile = {
     id: CULTURAL_PROFILE_ID,
     consent: {
       granted,
@@ -46,6 +47,11 @@ export function toStoredCulturalProfile(
     activities: sanitizeLikes(input.activities),
     updatedAt: input.updatedAt || now,
   };
+  if (granted) {
+    const loved = sanitizeLovedEntities(input.lovedEntities);
+    if (loved.length > 0) stored.lovedEntities = loved;
+  }
+  return stored;
 }
 
 export function emptyCulturalProfile(
@@ -86,6 +92,42 @@ export function getConsentedQlooTagIds(profile: CulturalProfile | null | undefin
     if (tag?.mechanism === "signal" && tag.verifiedAsSignal) ids.push(id);
   }
   return ids;
+}
+
+function sanitizeLovedEntities(
+  raw: CulturalProfile["lovedEntities"] | undefined
+): NonNullable<CulturalProfile["lovedEntities"]> {
+  if (!Array.isArray(raw)) return [];
+  const out: NonNullable<CulturalProfile["lovedEntities"]> = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const id = typeof item.id === "string" ? item.id.trim().toLowerCase() : "";
+    const name = typeof item.name === "string" ? item.name.trim() : "";
+    const type = typeof item.type === "string" ? item.type.trim() : "";
+    if (!id || !name || !QLOO_ENTITY_UUID.test(id) || seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, name, type });
+    if (out.length >= QLOO_MAX_ENTITIES) break;
+  }
+  return out;
+}
+
+/** Loved Qloo entities that may be sent as signal.interests.entities. Empty without consent. */
+export function getConsentedLovedEntities(
+  profile: CulturalProfile | null | undefined
+): NonNullable<CulturalProfile["lovedEntities"]> {
+  if (!profile?.consent.granted) return [];
+  return sanitizeLovedEntities(profile.lovedEntities);
+}
+
+export function hasConsentedTaste(profile: CulturalProfile | null | undefined): boolean {
+  if (!profile?.consent.granted) return false;
+  return (
+    getConsentedQlooTagIds(profile).length > 0 ||
+    Boolean(getConsentedFilterTagId(profile)) ||
+    getConsentedLovedEntities(profile).length > 0
+  );
 }
 
 /** At most one verified filter tag. Undefined without consent. */

@@ -1,4 +1,5 @@
-import type { QlooPlace, QlooTag } from "./types";
+import type { QlooLovedEntity, QlooPlace, QlooTag } from "./types";
+import { QLOO_ENTITY_UUID, QLOO_MAX_ENTITIES } from "./types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -76,6 +77,47 @@ export function normalizeInsightsResponse(payload: unknown): QlooPlace[] | null 
     if (place) places.push(place);
   }
   return places;
+}
+
+function searchItems(payload: unknown): unknown[] | null {
+  if (Array.isArray(payload)) return payload;
+  if (!isRecord(payload)) return null;
+  if (Array.isArray(payload.results)) return payload.results;
+  const results = payload.results;
+  if (isRecord(results) && Array.isArray(results.entities)) return results.entities;
+  if (Array.isArray(payload.entities)) return payload.entities;
+  return null;
+}
+
+function normalizeLovedEntity(raw: unknown): QlooLovedEntity | null {
+  if (!isRecord(raw)) return null;
+  const id = (asNonEmptyString(raw.entity_id) ?? asNonEmptyString(raw.id) ?? "").trim();
+  const name = asNonEmptyString(raw.name);
+  if (!id || !name || !QLOO_ENTITY_UUID.test(id)) return null;
+  const type =
+    asNonEmptyString(raw.type) ??
+    (Array.isArray(raw.types) ? asNonEmptyString(raw.types[0]) : undefined) ??
+    "";
+  return { id: id.toLowerCase(), name, type };
+}
+
+/**
+ * Map a Qloo Entity Search payload to { id, name, type } only.
+ * Drops aliases. Returns null when the payload is not a recognizable search shape.
+ */
+export function normalizeSearchResponse(payload: unknown): QlooLovedEntity[] | null {
+  const items = searchItems(payload);
+  if (!items) return null;
+  const entities: QlooLovedEntity[] = [];
+  const seen = new Set<string>();
+  for (const item of items) {
+    const entity = normalizeLovedEntity(item);
+    if (!entity || seen.has(entity.id)) continue;
+    seen.add(entity.id);
+    entities.push(entity);
+    if (entities.length >= QLOO_MAX_ENTITIES) break;
+  }
+  return entities;
 }
 
 export function normalizeTagsResponse(payload: unknown): QlooTag[] | null {

@@ -50,6 +50,24 @@ export interface QlooPlaceQuery {
   tags?: string[];
   /** At most one hard filter tag, sent as filter.tags. */
   filterTags?: string[];
+  /** At most five Qloo entity UUIDs, sent as signal.interests.entities. */
+  entities?: string[];
+  take?: number;
+}
+
+export interface QlooLovedEntity {
+  id: string;
+  name: string;
+  type: string;
+}
+
+export type QlooEntitiesResult =
+  | { source: "qloo"; entities: QlooLovedEntity[] }
+  | { source: "demo"; entities: []; reason: "NO_KEY" }
+  | { source: "unavailable"; entities: []; reason: QlooUnavailableReason };
+
+export interface QlooEntitySearchQuery {
+  query: string;
   take?: number;
 }
 
@@ -70,10 +88,14 @@ export type QlooTagsResult =
   | { source: "unavailable"; tags: []; reason: QlooUnavailableReason };
 
 export const QLOO_TAG_URN = /^urn:tag:[a-z0-9_:.-]+$/i;
+export const QLOO_ENTITY_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const QLOO_DEFAULT_BASE_URL = "https://hackathon.api.qloo.com";
 export const QLOO_DEFAULT_TIMEOUT_MS = 8_000;
 export const QLOO_MAX_CITY_LENGTH = 80;
 export const QLOO_MAX_TAGS = 10;
 export const QLOO_MAX_FILTER_TAGS = 1;
+export const QLOO_MAX_ENTITIES = 5;
+export const QLOO_MAX_ENTITY_QUERY = 80;
 export const QLOO_MIN_TAKE = 1;
 export const QLOO_MAX_TAKE = 10;
