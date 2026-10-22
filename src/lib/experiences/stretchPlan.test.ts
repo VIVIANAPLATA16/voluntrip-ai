@@ -262,6 +262,21 @@ describe("assembleStretchPlan", () => {
     expect(result.daysEquivalent).toBe(0);
   });
 
+  it("treats the same place set as identical even when night order differs", () => {
+    const mixedOrder = [
+      exp({ id: "a", name: "Alpha", cost: 20, culturalFit: 70, valueScore: 95 }),
+      exp({ id: "b", name: "Beta", cost: 20, culturalFit: 90, valueScore: 90 }),
+      exp({ id: "c", name: "Gamma", cost: 20, culturalFit: 80, valueScore: 80 }),
+    ];
+    const result = assemble(mixedOrder, 3);
+    expect(result.kind).toBe("ready");
+    if (result.kind !== "ready") return;
+    expect(result.best.nights.map(function (n) { return n.place.id; })).toEqual(["a", "b", "c"]);
+    expect(result.stretched.nights.map(function (n) { return n.place.id; })).toEqual(["b", "c", "a"]);
+    expect(result.savingsUsd).toBe(0);
+    expect(result.identical).toBe(true);
+  });
+
   it("swaps a night for the next unused candidate and recomputes savings", () => {
     const result = assemble(pool, 3);
     expect(result.kind).toBe("ready");

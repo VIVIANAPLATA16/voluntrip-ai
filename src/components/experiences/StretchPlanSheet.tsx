@@ -287,7 +287,7 @@ function PlanSummary({
       {version.kind === "stretched" && !plan.identical ? (
         <p className="text-xs text-ink-muted break-words">{t(locale, "stretch.savings", { cost: savings })}</p>
       ) : null}
-      {version.kind === "stretched" && plan.rateAvailable && plan.daysEquivalent !== null ? (
+      {version.kind === "stretched" && !plan.identical && plan.rateAvailable && plan.daysEquivalent !== null ? (
         <p className="text-xs text-ink-muted break-words">
           {t(locale, "stretch.days_equiv", { days: plan.daysEquivalent })}
         </p>
@@ -382,12 +382,15 @@ function WhyStretchPlanSheet({
               cost: formatMoney(version.totalDisplay, version.displayCurrency, { showCode: true }),
             })}
           </p>
-          {version.kind === "stretched" ? (
+          {version.kind === "stretched" && !plan.identical ? (
             <p className="text-xs text-ink-muted break-words">
               {t(locale, "stretch.savings", {
                 cost: formatMoney(plan.savingsDisplay, plan.displayCurrency, { showCode: true }),
               })}
             </p>
+          ) : null}
+          {version.kind === "stretched" && plan.identical ? (
+            <p className="text-xs text-ink-muted break-words">{t(locale, "stretch.identical")}</p>
           ) : null}
           <p className="text-xs text-ink-muted break-words">
             {t(locale, "experience.daily_before")}: {formatMoney(sim.dailyBudgetBefore, plan.displayCurrency)}

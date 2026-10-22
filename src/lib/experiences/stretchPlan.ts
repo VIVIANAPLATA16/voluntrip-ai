@@ -244,10 +244,12 @@ function totalUsd(places: readonly Experience[]): number {
   );
 }
 
-function samePlaces(a: readonly Experience[], b: readonly Experience[]): boolean {
+function samePlaceSet(a: readonly Experience[], b: readonly Experience[]): boolean {
   if (a.length !== b.length) return false;
-  return a.every(function (place, index) {
-    return normalizePlaceKey(place) === normalizePlaceKey(b[index]);
+  const keys = new Set(a.map(normalizePlaceKey));
+  if (keys.size !== a.length) return false;
+  return b.every(function (place) {
+    return keys.has(normalizePlaceKey(place));
   });
 }
 
@@ -303,8 +305,8 @@ function finishReady(
     stretchedPick.weakerKeys,
     input
   );
-  const identical = samePlaces(bestPlaces, stretchedPick.places);
   const savingsUsd = roundMoney(best.totalEstimatedUsd - stretched.totalEstimatedUsd);
+  const identical = samePlaceSet(bestPlaces, stretchedPick.places) || savingsUsd === 0;
   const converted = convertUsdEstimate(savingsUsd, input.trip.baseCurrency);
   const rateAvailable = converted.rateAvailable;
   return {

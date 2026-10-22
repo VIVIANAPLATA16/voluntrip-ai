@@ -237,7 +237,7 @@ const dictionaries = {
     "stretch.total": "Estimated total {cost} / person",
     "stretch.savings": "You save an estimated {cost}",
     "stretch.days_equiv": "That equals ≈{days} days of your safe spend",
-    "stretch.identical": "The best match is already the cheapest.",
+    "stretch.identical": "Your best match is already the cheapest option for these nights",
     "stretch.shortened":
       "Only {used} of {requested} nights: fewer places or remaining days.",
     "stretch.weaker": "Weaker cultural fit",
@@ -675,7 +675,7 @@ const dictionaries = {
     "stretch.total": "Total estimado {cost} / persona",
     "stretch.savings": "Ahorras un estimado de {cost}",
     "stretch.days_equiv": "Equivale a ≈{days} días de tu gasto seguro",
-    "stretch.identical": "El mejor match ya es el más barato.",
+    "stretch.identical": "Tu mejor match ya es la opción más barata para estas noches",
     "stretch.shortened":
       "Solo {used} de {requested} noches: hay menos lugares o días restantes.",
     "stretch.weaker": "Encaje más débil",
@@ -1112,7 +1112,7 @@ const dictionaries = {
     "stretch.total": "Total estimado {cost} / pessoa",
     "stretch.savings": "Você economiza um estimado de {cost}",
     "stretch.days_equiv": "Equivale a ≈{days} dias do seu gasto seguro",
-    "stretch.identical": "O melhor match já é o mais barato.",
+    "stretch.identical": "O seu melhor match já é a opção mais barata para estas noites",
     "stretch.shortened":
       "Só {used} de {requested} noites: há menos lugares ou dias restantes.",
     "stretch.weaker": "Encaixe mais fraco",
