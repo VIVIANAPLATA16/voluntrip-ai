@@ -1,12 +1,12 @@
 "use client";
 
-import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { formatMoney } from "@/lib/constants";
-import { GENERIC_BASELINE_LABEL, qlooEvidenceForSheet } from "@/lib/experiences";
-import type { Experience } from "@/lib/experiences";
-import { t } from "@/lib/i18n/dictionaries";
 import { spendingStatusLabel } from "@/lib/i18n/labels";
+import { whyThisDetails } from "@/lib/experiences/whyThisDetails";
+import { t } from "@/lib/i18n/dictionaries";
+import { GENERIC_BASELINE_LABEL, type Experience } from "@/lib/experiences";
 import { useAppStore } from "@/store/appStore";
 import { ExperienceCard } from "./ExperienceCard";
 
@@ -15,7 +15,7 @@ export function WhyThisSheet({
   onClose,
   experience,
   alternative,
-  usedBaseline,
+  usedBaseline = false,
   onSimulate,
 }: {
   open: boolean;
@@ -25,119 +25,124 @@ export function WhyThisSheet({
   usedBaseline?: boolean;
   onSimulate: (amount: number) => void;
 }) {
-  const locale = useAppStore((s) => s.locale);
+  const locale = useAppStore(function (s) {
+    return s.locale;
+  });
   if (!experience) return null;
 
-  const evidence = qlooEvidenceForSheet(experience.whyQloo, usedBaseline);
-  const queried = new Date(experience.whyQloo.queriedAt).toLocaleString(
-    locale === "es" ? "es-CO" : locale === "pt" ? "pt-BR" : "en-US",
-    { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }
-  );
+  const details = whyThisDetails(experience, usedBaseline);
+  const evidence = details.evidence;
+  const sourceLabel = usedBaseline
+    ? `${evidence.source} (${GENERIC_BASELINE_LABEL})`
+    : evidence.source;
 
   return (
-    <BottomSheet
-      open={open}
-      onClose={onClose}
-      title={t(locale, "tonight.why")}
-      className="min-w-0 max-w-[360px] md:max-w-lg"
-    >
-      <div className="min-w-0 max-w-full space-y-4 overflow-hidden">
-        <ExperienceCard
-          experience={experience}
-          provenanceLabel={usedBaseline ? GENERIC_BASELINE_LABEL : undefined}
-        />
+    <BottomSheet open={open} onClose={onClose} title={t(locale, "tonight.why")}>
+      <div className="min-w-0 max-w-[360px] space-y-4 overflow-x-hidden overflow-y-auto motion-reduce:transition-none">
+        <p className="text-sm font-medium text-ink break-words">
+          {t(locale, "experience.why_heading", { name: details.name })}
+        </p>
+        <ExperienceCard experience={experience} />
 
-        <section className="min-w-0 space-y-1 rounded-2xl border border-border bg-surface/70 p-3">
-          <h3 className="text-sm font-semibold break-words">
+        <section className="min-w-0 space-y-2 text-sm">
+          <h3 className="font-semibold break-words">
             {t(locale, evidence.showAsQloo ? "experience.from_qloo" : "experience.not_from_qloo")}
           </h3>
           {evidence.showAsQloo && evidence.signals.length > 0 ? (
-            <p className="text-xs text-ink-muted break-words">
+            <p className="text-ink-muted break-words">
               {t(locale, "experience.signals_sent", {
                 signals: evidence.signals.join(", "),
               })}
             </p>
           ) : null}
-          {evidence.showAsQloo && evidence.entities.length > 0 ? (
-            <p className="text-xs text-ink-muted break-words">
+          {evidence.showAsQloo && details.entities.length > 0 ? (
+            <p className="text-ink-muted break-words">
               {t(locale, "experience.entities_sent", {
-                names: evidence.entities.join(", "),
+                names: details.entities.join(", "),
               })}
             </p>
           ) : null}
           {evidence.filter ? (
-            <p className="text-xs text-ink-muted break-words">
+            <p className="text-ink-muted break-words">
               {t(locale, "experience.filtered_by", { label: evidence.filter })}
             </p>
           ) : null}
           {evidence.showAsQloo ? (
-            <p className="text-xs text-ink-muted break-words">
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-ink-muted">
+              <dt className="break-words">{t(locale, "experience.matched_tags")}</dt>
+              <dd className="min-w-0 break-words">
+                {details.showMatchedNone
+                  ? t(locale, "experience.matched_tags_none")
+                  : details.matchedTags.join(", ")}
+              </dd>
+              {details.rank !== null ? (
+                <>
+                  <dt className="break-words">{t(locale, "experience.rank")}</dt>
+                  <dd className="tabular-nums">{details.rank}</dd>
+                </>
+              ) : null}
+            </dl>
+          ) : null}
+          {evidence.showAsQloo ? (
+            <p className="text-ink-muted break-words">
               {t(
                 locale,
                 evidence.filter ? "experience.ranked_for_filter" : "experience.ranked_for_signals",
-                {
-                  rank: evidence.rank,
-                  total: evidence.totalResults,
-                }
+                { rank: evidence.rank, total: evidence.totalResults }
               )}
             </p>
           ) : null}
-          {evidence.matchedPlaceTags ? (
-            <p className="text-xs text-ink-muted break-words">
-              {t(locale, "experience.matched_place_tags", {
-                tags: evidence.matchedPlaceTags.join(", "),
-              })}
-            </p>
-          ) : null}
-          <p className="text-xs text-ink-muted break-words">
-            {t(locale, "experience.source")}: {experience.whyQloo.source}
-            {usedBaseline ? ` (${GENERIC_BASELINE_LABEL})` : ""}
+          <p className="text-ink-muted break-words">
+            {t(locale, "experience.source")}: {sourceLabel}
           </p>
-          <p className="text-xs text-ink-muted break-words">
-            {t(locale, "experience.queried_at")}: {queried}
+          <p className="text-ink-faint text-xs break-words">
+            {t(locale, "experience.queried_at")}: {new Date(evidence.queriedAt).toLocaleString()}
           </p>
         </section>
 
-        <section className="min-w-0 space-y-1 rounded-2xl border border-border bg-surface/70 p-3">
-          <h3 className="text-sm font-semibold break-words">
-            {t(locale, "experience.from_voluntrip")}
-          </h3>
-          <p className="text-xs text-ink-muted break-words">
+        <section className="min-w-0 space-y-2 text-sm">
+          <h3 className="font-semibold">{t(locale, "experience.from_voluntrip")}</h3>
+          <p className="text-ink-muted break-words">
+            {t(locale, "experience.value_score_detail", { score: details.valueScore })}
+          </p>
+          <p className="text-ink-muted break-words">
             {t(locale, "experience.estimated", {
               cost: formatMoney(experience.estimatedCost.amount, "USD", { showCode: true }),
             })}
           </p>
-          <p className="text-xs text-ink-muted break-words">
-            {t(locale, "experience.daily_before")}:{" "}
-            {formatMoney(experience.whyVoluntrip.dailySafeSpendBefore, "USD")}
-          </p>
-          <p className="text-xs text-ink-muted break-words">
-            {t(locale, "experience.daily_after")}:{" "}
-            {formatMoney(experience.whyVoluntrip.dailySafeSpendAfter, "USD")}
-          </p>
-          <p className="text-xs text-ink-muted break-words">
-            {t(locale, "experience.protected")}:{" "}
-            {experience.whyVoluntrip.protectedMoneyUntouched
-              ? t(locale, "navi.experience.protected_yes")
-              : t(locale, "navi.experience.protected_no")}
-          </p>
-          <p className="text-xs text-ink-muted break-words">
-            {t(locale, "experience.runway")}:{" "}
-            {spendingStatusLabel(locale, experience.whyVoluntrip.runwayStatus)}
-          </p>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-ink-muted">
+            <dt className="break-words">{t(locale, "experience.daily_before")}</dt>
+            <dd className="tabular-nums">
+              {formatMoney(experience.whyVoluntrip.dailySafeSpendBefore, "USD")}
+            </dd>
+            <dt className="break-words">{t(locale, "experience.daily_after")}</dt>
+            <dd className="tabular-nums">
+              {formatMoney(experience.whyVoluntrip.dailySafeSpendAfter, "USD")}
+            </dd>
+            <dt className="break-words">{t(locale, "experience.protected")}</dt>
+            <dd>
+              {experience.whyVoluntrip.protectedMoneyUntouched
+                ? t(locale, "navi.experience.protected_yes")
+                : t(locale, "navi.experience.protected_no")}
+            </dd>
+            <dt className="break-words">{t(locale, "experience.runway")}</dt>
+            <dd className="min-w-0 break-words">
+              {spendingStatusLabel(locale, experience.whyVoluntrip.runwayStatus)}
+            </dd>
+          </dl>
         </section>
 
         {alternative ? (
-          <section className="min-w-0 space-y-2">
-            <p className="text-xs font-semibold text-ink-faint break-words">
+          <div className="min-w-0 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
               {t(locale, "tonight.alternative")}
             </p>
             <ExperienceCard experience={alternative} />
-          </section>
+          </div>
         ) : null}
 
         <Button
-          className="w-full max-w-full"
+          className="min-h-10 w-full min-w-0 max-w-full"
           onClick={() => onSimulate(experience.estimatedCost.amount)}
         >
           {t(locale, "tonight.go")}
