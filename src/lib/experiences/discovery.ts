@@ -30,6 +30,25 @@ const LODGING_ID_MARKERS = [
   "guest_house",
 ];
 
+/**
+ * Last-segment tokens from the same `urn:tag:…:place:{token}` shape used in
+ * fixtures (`genre:place:hotel`, `category:place:lodging`, `genre:place:bar`).
+ * No university/college/school tags exist in the repo yet — markers follow
+ * that colon-part convention, not guessed full URNs.
+ */
+export const NON_TOURIST_ID_MARKERS = [
+  "university",
+  "college",
+  "school",
+  "condominium",
+  "residential",
+  "apartment",
+  "hospital",
+  "clinic",
+  "government",
+  "bank",
+] as const;
+
 /** Lowercase, strip accents, collapse spaces — used to drop duplicate place names. */
 export function foldPlaceName(name: string): string {
   return name
@@ -40,21 +59,28 @@ export function foldPlaceName(name: string): string {
     .trim();
 }
 
+function tagIdHasMarker(id: string, markers: readonly string[]): boolean {
+  const parts = id.trim().toLowerCase().split(":");
+  return parts.some(function (part) {
+    return markers.some(function (marker) {
+      return part === marker || part.startsWith(marker + "_") || part.startsWith(marker + "-");
+    });
+  });
+}
+
 export function isHotelCandidate(place: Pick<QlooPlace, "tags">): boolean {
   return place.tags.some(function (tag) {
     const id = tag.id.trim().toLowerCase();
     if (HOTEL_TAG_PREFIXES.some((prefix) => id.startsWith(prefix))) return true;
-    const parts = id.split(":");
-    if (
-      parts.some(function (part) {
-        return LODGING_ID_MARKERS.some(function (marker) {
-          return part === marker || part.startsWith(marker + "_") || part.startsWith(marker + "-");
-        });
-      })
-    ) {
-      return true;
-    }
+    if (tagIdHasMarker(id, LODGING_ID_MARKERS)) return true;
     return LODGING_NAME_RE.test(foldPlaceName(tag.name));
+  });
+}
+
+/** True when a Qloo tag id part marks a non-tourist place. Never matches on place names. */
+export function isNonTouristCandidate(place: Pick<QlooPlace, "tags">): boolean {
+  return place.tags.some(function (tag) {
+    return tagIdHasMarker(tag.id, NON_TOURIST_ID_MARKERS);
   });
 }
 
@@ -126,7 +152,9 @@ export async function discoverExperiences(
   });
 
   const queriedAt = (options.now ?? new Date()).toISOString();
-  const stripped = result.places.filter((place) => !isHotelCandidate(place));
+  const stripped = result.places.filter(
+    (place) => !isHotelCandidate(place) && !isNonTouristCandidate(place)
+  );
   const deduped = dedupePlacesByName(stripped);
   const usedEntities = entityIds.length > 0;
   const candidates = usedEntities && deduped.length < MIN_ENTITY_PLACES ? [] : deduped;

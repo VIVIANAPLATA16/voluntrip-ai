@@ -167,22 +167,22 @@ export function LovedEntitiesField({
         <p className="text-xs text-ink-faint break-words">{t(locale, "culture.love_needs_consent")}</p>
       ) : (
         <form
-          className="flex min-w-0 max-w-full items-end gap-2"
+          className="flex min-w-0 max-w-full items-end gap-2 overflow-hidden"
           onSubmit={function (event) {
             event.preventDefault();
             void runSearch(query);
           }}
         >
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 overflow-hidden">
             <Input
               value={query}
               onChange={function (event) {
                 setQuery(event.target.value);
               }}
-              placeholder={t(locale, "culture.love_search_hint")}
+              placeholder={t(locale, "culture.love_search_placeholder")}
               aria-label={t(locale, "culture.tell_what_you_love")}
               disabled={!granted}
-              className="min-h-10"
+              className="min-h-10 min-w-0 max-w-full placeholder:truncate"
             />
           </div>
           <Button

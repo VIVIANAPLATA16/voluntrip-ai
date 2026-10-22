@@ -11,6 +11,8 @@ import {
   foldPlaceName,
   getMedellinBaseline,
   isHotelCandidate,
+  isNonTouristCandidate,
+  NON_TOURIST_ID_MARKERS,
   rankExperiences,
   rankMedellinBaseline,
 } from "./index";
@@ -616,6 +618,162 @@ describe("discoverExperiences", () => {
       "N3",
       "N4",
     ]);
+  });
+
+  function taggedPlace(id: string, name: string, rank: number, tagId: string, tagName: string): QlooPlace {
+    return place({
+      id,
+      name,
+      rank,
+      tags: [{ id: tagId, name: tagName, type: "urn:tag:genre:place" }],
+    });
+  }
+
+  const CITY_MIX: Record<
+    string,
+    { places: QlooPlace[]; keep: string[] }
+  > = {
+    Medellín: {
+      places: [
+        taggedPlace("u", "Universidad de Antioquia", 1, "urn:tag:genre:place:university", "University"),
+        taggedPlace("bar", "El Social Salsa", 2, "urn:tag:genre:place:bar", "Bar"),
+        taggedPlace("cafe", "Café Pergamino", 3, "urn:tag:genre:place:cafe", "Cafe"),
+        taggedPlace("condo", "Conjunto Residencial", 4, "urn:tag:category:place:condominium", "Condominium"),
+        taggedPlace("comedy", "Delirio", 5, "urn:tag:genre:place:comedy_club", "Comedy club"),
+      ],
+      keep: ["bar", "cafe", "comedy"],
+    },
+    Singapore: {
+      places: [
+        taggedPlace("school", "National University", 1, "urn:tag:genre:place:school", "School"),
+        taggedPlace("karaoke", "KBox", 2, "urn:tag:genre:place:restaurant:karaoke_bar", "Karaoke"),
+        taggedPlace("casino", "Marina Bay Casino", 3, "urn:tag:genre:place:casino", "Casino"),
+        taggedPlace("hospital", "Singapore General", 4, "urn:tag:genre:place:hospital", "Hospital"),
+        taggedPlace("bar", "Clarke Quay Bar", 5, "urn:tag:genre:place:bar", "Bar"),
+      ],
+      keep: ["karaoke", "casino", "bar"],
+    },
+    Lima: {
+      places: [
+        taggedPlace(
+          "u",
+          "Universidad Jaime Bausate y Meza",
+          1,
+          "urn:tag:genre:place:university",
+          "University"
+        ),
+        taggedPlace(
+          "condo",
+          "Condominio Asia Azul",
+          2,
+          "urn:tag:category:place:condominium",
+          "Condominium"
+        ),
+        taggedPlace("bar", "Ayahuasca", 3, "urn:tag:genre:place:bar", "Bar"),
+        taggedPlace("cafe", "Café Bisetti", 4, "urn:tag:genre:place:cafe", "Cafe"),
+        taggedPlace("clinic", "Clínica San Felipe", 5, "urn:tag:genre:place:clinic", "Clinic"),
+        taggedPlace("comedy", "El Club de la Comedia", 6, "urn:tag:genre:place:comedy_club", "Comedy club"),
+      ],
+      keep: ["bar", "cafe", "comedy"],
+    },
+  };
+
+  it("keeps tourist places and drops non-tourist tags in Medellín, Singapore and Lima", async () => {
+    for (const city of ["Medellín", "Singapore", "Lima"]) {
+      const mix = CITY_MIX[city];
+      const searchPlaces = vi.fn(async () => qlooResult(mix.places));
+      const result = await discoverExperiences(
+        {
+          city,
+          profileTagIds: [],
+          entityIds: [ENTITY_ID],
+          entityNames: ["Bad Bunny"],
+          consentGranted: true,
+        },
+        { searchPlaces, now }
+      );
+      expect(result.source).toBe("qloo");
+      expect(result.candidates.map(function (item) {
+        return item.id;
+      })).toEqual(mix.keep);
+    }
+  });
+
+  it("empties below 3 after non-tourist strip when entities are used, and keeps 1–2 without entities", async () => {
+    const mixed = [
+      taggedPlace("u", "Universidad Jaime Bausate y Meza", 1, "urn:tag:genre:place:university", "University"),
+      taggedPlace("condo", "Condominio Asia Azul", 2, "urn:tag:category:place:condominium", "Condominium"),
+      barPlace("bar-1", "Ayahuasca", 3),
+      barPlace("bar-2", "Bar Queirolo", 4),
+    ];
+    const withEntities = await discoverExperiences(
+      {
+        city: "Lima",
+        profileTagIds: [],
+        entityIds: [ENTITY_ID],
+        entityNames: ["Bad Bunny"],
+        consentGranted: true,
+      },
+      { searchPlaces: vi.fn(async () => qlooResult(mixed)), now }
+    );
+    expect(withEntities.source).toBe("qloo");
+    expect(withEntities.candidates).toEqual([]);
+
+    const without = await discoverExperiences(
+      { city: "Lima", profileTagIds: PROFILE_TAGS, consentGranted: true },
+      { searchPlaces: vi.fn(async () => qlooResult(mixed)), now }
+    );
+    expect(without.source).toBe("qloo");
+    expect(without.candidates.map(function (item) {
+      return item.id;
+    })).toEqual(["bar-1", "bar-2"]);
+  });
+});
+
+describe("isNonTouristCandidate", () => {
+  function tagged(
+    tagId: string,
+    name = "Place",
+    extra: Partial<QlooPlace> = {}
+  ): Pick<QlooPlace, "tags" | "name"> & Partial<QlooPlace> {
+    return {
+      name,
+      tags: [{ id: tagId, name: "Tag", type: "urn:tag:genre:place" }],
+      ...extra,
+    };
+  }
+
+  it("filters each excluded marker and keeps nightlife and food tags", () => {
+    for (const marker of NON_TOURIST_ID_MARKERS) {
+      expect(
+        isNonTouristCandidate(tagged(`urn:tag:genre:place:${marker}`)),
+        marker
+      ).toBe(true);
+      expect(
+        isNonTouristCandidate(tagged(`urn:tag:category:place:${marker}`)),
+        marker
+      ).toBe(true);
+    }
+    expect(isNonTouristCandidate(tagged("urn:tag:genre:place:casino"))).toBe(false);
+    expect(
+      isNonTouristCandidate(tagged("urn:tag:genre:place:restaurant:karaoke_bar"))
+    ).toBe(false);
+    expect(isNonTouristCandidate(tagged("urn:tag:genre:place:bar"))).toBe(false);
+    expect(isNonTouristCandidate(tagged("urn:tag:genre:place:comedy_club"))).toBe(false);
+    expect(isNonTouristCandidate(tagged("urn:tag:genre:place:cafe"))).toBe(false);
+  });
+
+  it("does not match innsbruck tag parts or school only in the place name", () => {
+    expect(isNonTouristCandidate(tagged("urn:tag:genre:place:innsbruck"))).toBe(false);
+    expect(
+      isNonTouristCandidate({
+        name: "School of Rock Bar",
+        tags: [{ id: "urn:tag:genre:place:bar", name: "Bar", type: "urn:tag:genre:place" }],
+      })
+    ).toBe(false);
+    expect(isNonTouristCandidate({ name: "Universidad Jaime Bausate y Meza", tags: [] })).toBe(
+      false
+    );
   });
 });
 
