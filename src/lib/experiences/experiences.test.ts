@@ -453,6 +453,170 @@ describe("discoverExperiences", () => {
       return item.id;
     })).toEqual(["club"]);
   });
+
+  const UUID_A = "550e8400-e29b-41d4-a716-44665544000a";
+  const UUID_B = "550e8400-e29b-41d4-a716-44665544000b";
+
+  function barPlace(id: string, name: string, rank: number): QlooPlace {
+    return place({
+      id,
+      name,
+      rank,
+      tags: [{ id: "urn:tag:genre:place:bar", name: "Bar", type: "urn:tag:genre:place" }],
+    });
+  }
+
+  function entityUuid(n: number): string {
+    return `550e8400-e29b-41d4-a716-44665544000${n}`;
+  }
+
+  function whyQlooEntities(
+    candidates: QlooPlace[],
+    entityNames: readonly string[] | undefined
+  ): string[] | undefined {
+    const ranked = rankExperiences({
+      candidates,
+      source: "qloo",
+      queriedAt: now.toISOString(),
+      qlooTotal: candidates.length,
+      profileTagIds: [],
+      intent: "tonight",
+      entities: entityNames,
+      now,
+      trip,
+      transactions,
+      pockets,
+    });
+    return ranked.all[0]?.whyQloo.entities;
+  }
+
+  it("empties candidates below 3 after hotel and dedupe when entities are used, and keeps exactly 3", async () => {
+    const twoBars = [
+      lodgingPlace("hotel", "Hotel One", 1, "urn:tag:genre:place:hotel", "Hotel"),
+      barPlace("bar-1", "Bar Uno", 2),
+      barPlace("bar-2", "Bar Dos", 3),
+    ];
+    const below = await discoverExperiences(
+      {
+        city: "Singapore",
+        profileTagIds: [],
+        entityIds: [ENTITY_ID],
+        entityNames: ["Bad Bunny"],
+        consentGranted: true,
+      },
+      { searchPlaces: vi.fn(async () => qlooResult(twoBars)), now }
+    );
+    expect(below.source).toBe("qloo");
+    expect(below.candidates).toEqual([]);
+
+    const threeBars = [barPlace("a", "Alpha", 1), barPlace("b", "Beta", 2), barPlace("c", "Gamma", 3)];
+    const exact = await discoverExperiences(
+      {
+        city: "Lima",
+        profileTagIds: [],
+        entityIds: [ENTITY_ID],
+        entityNames: ["Bad Bunny"],
+        consentGranted: true,
+      },
+      { searchPlaces: vi.fn(async () => qlooResult(threeBars)), now }
+    );
+    expect(exact.candidates.map(function (item) {
+      return item.id;
+    })).toEqual(["a", "b", "c"]);
+  });
+
+  it("still shows 1 or 2 places when entities are omitted", async () => {
+    const twoBars = [barPlace("bar-1", "Bar Uno", 1), barPlace("bar-2", "Bar Dos", 2)];
+    const two = await discoverExperiences(
+      { city: "Medellín", profileTagIds: PROFILE_TAGS, consentGranted: true },
+      { searchPlaces: vi.fn(async () => qlooResult(twoBars)), now }
+    );
+    expect(two.candidates.map(function (item) {
+      return item.id;
+    })).toEqual(["bar-1", "bar-2"]);
+    expect(two.entities).toBeUndefined();
+  });
+
+  it("pairs each entity id with its name so invalid ids cannot shift whyQloo labels", async () => {
+    const searchPlaces = vi.fn(async () =>
+      qlooResult([barPlace("a", "Alpha", 1), barPlace("b", "Beta", 2), barPlace("c", "Gamma", 3)])
+    );
+    const result = await discoverExperiences(
+      {
+        city: "Lima",
+        profileTagIds: [],
+        entityIds: [UUID_A, "no-es-uuid", UUID_B],
+        entityNames: ["A", "X", "B"],
+        consentGranted: true,
+      },
+      { searchPlaces, now }
+    );
+    expect(searchPlaces).toHaveBeenCalledWith({
+      city: "Lima",
+      tags: [],
+      entities: [UUID_A, UUID_B],
+      take: 10,
+    });
+    expect(result.entities).toEqual(["A", "B"]);
+    expect(result.entities).not.toContain("X");
+    expect(whyQlooEntities(result.candidates, result.entities)).toEqual(["A", "B"]);
+  });
+
+  it("sends a repeated UUID once regardless of case", async () => {
+    const searchPlaces = vi.fn(async () =>
+      qlooResult([barPlace("a", "Alpha", 1), barPlace("b", "Beta", 2), barPlace("c", "Gamma", 3)])
+    );
+    const result = await discoverExperiences(
+      {
+        city: "Medellín",
+        profileTagIds: [],
+        entityIds: [UUID_A.toUpperCase(), UUID_A],
+        entityNames: ["A", "A duplicate"],
+        consentGranted: true,
+      },
+      { searchPlaces, now }
+    );
+    expect(searchPlaces).toHaveBeenCalledWith({
+      city: "Medellín",
+      tags: [],
+      entities: [UUID_A],
+      take: 10,
+    });
+    expect(result.entities).toEqual(["A"]);
+    expect(whyQlooEntities(result.candidates, result.entities)).toEqual(["A"]);
+  });
+
+  it("sends at most 5 entities and whyQloo lists only those five names", async () => {
+    const ids = [0, 1, 2, 3, 4, 5, 6].map(entityUuid);
+    const names = ["N0", "N1", "N2", "N3", "N4", "N5", "N6"];
+    const searchPlaces = vi.fn(async () =>
+      qlooResult([barPlace("a", "Alpha", 1), barPlace("b", "Beta", 2), barPlace("c", "Gamma", 3)])
+    );
+    const result = await discoverExperiences(
+      {
+        city: "Singapore",
+        profileTagIds: [],
+        entityIds: ids,
+        entityNames: names,
+        consentGranted: true,
+      },
+      { searchPlaces, now }
+    );
+    expect(searchPlaces).toHaveBeenCalledWith({
+      city: "Singapore",
+      tags: [],
+      entities: ids.slice(0, 5),
+      take: 10,
+    });
+    expect(result.entities).toEqual(["N0", "N1", "N2", "N3", "N4"]);
+    expect(whyQlooEntities(result.candidates, result.entities)).toEqual([
+      "N0",
+      "N1",
+      "N2",
+      "N3",
+      "N4",
+    ]);
+  });
 });
 
 describe("ranking and Voluntrip Value Score", () => {

@@ -103,12 +103,15 @@ export async function discoverExperiences(
   const filterTagId =
     input.consentGranted && input.filterTagId?.trim() ? input.filterTagId.trim() : undefined;
   const filterTags = filterTagId ? [filterTagId] : undefined;
-  const entityIds = input.consentGranted
-    ? uniqueEntityIds(input.entityIds)
+  const loved = input.consentGranted
+    ? pairLovedEntities(input.entityIds, input.entityNames)
     : [];
-  const entityNames = input.consentGranted
-    ? uniqueNames(input.entityNames).slice(0, entityIds.length || QLOO_MAX_ENTITIES)
-    : [];
+  const entityIds = loved.map(function (entity) {
+    return entity.id;
+  });
+  const entityNames = loved.map(function (entity) {
+    return entity.name;
+  });
   const signals = signalLabels(tags);
   const filter = filterTagId
     ? findCulturalDnaTag(filterTagId)?.label ?? filterTagId
@@ -161,28 +164,21 @@ export async function discoverExperiences(
   };
 }
 
-function uniqueEntityIds(ids: readonly string[] | undefined): string[] {
-  const out: string[] = [];
+function pairLovedEntities(
+  ids: readonly string[] | undefined,
+  names: readonly string[] | undefined
+): Array<{ id: string; name: string }> {
+  const rawIds = ids ?? [];
+  const rawNames = names ?? [];
+  const out: Array<{ id: string; name: string }> = [];
   const seen = new Set<string>();
-  for (const raw of ids ?? []) {
-    const id = raw.trim().toLowerCase();
-    if (!QLOO_ENTITY_UUID.test(id) || seen.has(id)) continue;
+  for (let i = 0; i < rawIds.length; i++) {
+    const id = rawIds[i]?.trim().toLowerCase() ?? "";
+    const name = (rawNames[i] ?? "").trim();
+    if (!id || !name || !QLOO_ENTITY_UUID.test(id) || seen.has(id)) continue;
     seen.add(id);
-    out.push(id);
+    out.push({ id, name });
     if (out.length >= QLOO_MAX_ENTITIES) break;
-  }
-  return out;
-}
-
-function uniqueNames(names: readonly string[] | undefined): string[] {
-  const out: string[] = [];
-  const seen = new Set<string>();
-  for (const raw of names ?? []) {
-    const name = raw.trim();
-    const key = foldPlaceName(name);
-    if (!name || seen.has(key)) continue;
-    seen.add(key);
-    out.push(name);
   }
   return out;
 }
