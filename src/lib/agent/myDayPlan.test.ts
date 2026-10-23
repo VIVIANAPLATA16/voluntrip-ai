@@ -168,6 +168,12 @@ describe("formatMyDayReply", () => {
       "Plan de hoy: El Social Salsa, Cafe Dos, Bar Tres"
     );
     expect(t("es", "navi.myday.concept", { stops: "A, B" })).toBe("Plan de hoy: A, B");
+    expect(t("es", "navi.quick.myday")).toBe("Plan para hoy");
+    expect(t("en", "navi.quick.myday")).toBe("Plan for today");
+    expect(t("pt", "navi.quick.myday")).toBe("Plano para hoje");
+    expect(t("es", "navi.quick_prompt.myday")).toBe("plan para hoy");
+    expect(t("en", "navi.quick_prompt.myday")).toBe("plan for today");
+    expect(t("pt", "navi.quick_prompt.myday")).toBe("plano para hoje");
   });
 
   it("does not claim tag matches when only loved entities were sent", () => {
