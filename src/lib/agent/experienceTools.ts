@@ -12,6 +12,14 @@ import {
   rankMedellinBaseline,
   requestStretchPlan,
 } from "@/lib/experiences";
+import {
+  MY_DAY_MIN_QLOO,
+  dayPlanConcept,
+  dayPlanTotal,
+  distinctByFoldedName,
+  pickDayStops,
+  type MyDayPlan,
+} from "./myDayPlan";
 import type { ExperienceIntent } from "@/lib/experiences";
 import { fetchQlooPlaces } from "@/lib/qloo/apiFetch";
 import type { QlooPlaceQuery, QlooResult } from "@/lib/qloo/types";
@@ -25,6 +33,7 @@ export const CULTURAL_TOOL_NAMES = [
   "explainRecommendation",
   "findBetterOption",
   "planStretch",
+  "planMyDay",
 ] as const;
 
 export type CulturalToolName = (typeof CULTURAL_TOOL_NAMES)[number];
@@ -267,6 +276,117 @@ export async function planStretch(
   return noMutation(result);
 }
 
+export async function planMyDay(
+  args: Record<string, unknown>,
+  ctx: AgentContext
+): Promise<ToolResult> {
+  if (!ctx.trip) return { ok: false, error: "No active trip", mutation: { type: "none" } };
+  const city = String(args.city || ctx.trip.city || "").trim();
+  if (!city) return { ok: false, error: "city is required", mutation: { type: "none" } };
+
+  const now = resolveBudgetNow(ctx.trip, ctx.now);
+  const trip = alignDemoTripForBudget(ctx.trip, now);
+  const dailyResult = executeTool("getDailyBudget", {}, { ...ctx, trip, now });
+  const dailySafe = Number(
+    (dailyResult.data as { dailySafeSpend?: number } | undefined)?.dailySafeSpend ?? 0
+  );
+  const currency = trip.baseCurrency;
+  const honest = {
+    city,
+    dailySafe,
+    currency,
+  };
+
+  const profile = ctx.culturalProfile ?? null;
+  const missingProfile = profile == null;
+  const missingConsent = !hasConsent(profile);
+  if (missingProfile) {
+    return noMutation({ kind: "needs_profile", ...honest } satisfies MyDayPlan);
+  }
+  if (missingConsent) {
+    return noMutation({ kind: "needs_consent", ...honest } satisfies MyDayPlan);
+  }
+
+  const loved = getConsentedLovedEntities(profile);
+  const discovered = await discoverExperiences(
+    {
+      city,
+      profileTagIds: getConsentedQlooTagIds(profile),
+      filterTagId: getConsentedFilterTagId(profile),
+      entityIds: loved.map(function (entity) {
+        return entity.id;
+      }),
+      entityNames: loved.map(function (entity) {
+        return entity.name;
+      }),
+      consentGranted: true,
+    },
+    { searchPlaces: resolveSearchPlaces(ctx), now }
+  );
+
+  if (discovered.source === "unavailable") {
+    return noMutation({
+      kind: "unavailable",
+      ...honest,
+      reason: discovered.reason,
+    } satisfies MyDayPlan);
+  }
+  if (discovered.source !== "qloo") {
+    return noMutation({ kind: "demo", ...honest } satisfies MyDayPlan);
+  }
+
+  const unique = distinctByFoldedName(
+    rankExperiences({
+      profileTagIds: getConsentedQlooTagIds(profile),
+      intent: "general",
+      trip,
+      transactions: ctx.transactions,
+      pockets: ctx.pockets,
+      now,
+      candidates: discovered.candidates,
+      source: "qloo",
+      queriedAt: discovered.queriedAt,
+      qlooTotal: discovered.qlooTotal,
+      signals: discovered.signals,
+      filter: discovered.filter,
+      entities: discovered.entities,
+    }).all
+  );
+
+  if (unique.length < MY_DAY_MIN_QLOO) {
+    return noMutation({
+      kind: unique.length === 0 ? "empty" : "too_few",
+      ...honest,
+      found: unique.length,
+    } satisfies MyDayPlan);
+  }
+
+  const stops = pickDayStops(unique, dailySafe);
+  if (stops.length === 0) {
+    return noMutation({ kind: "none_fit", ...honest } satisfies MyDayPlan);
+  }
+
+  const total = dayPlanTotal(stops);
+  const simResult = executeTool(
+    "simulatePurchase",
+    { amount: total, currency: trip.baseCurrency },
+    { ...ctx, trip, now }
+  );
+  if (!simResult.ok || !simResult.data) {
+    return noMutation({ kind: "none_fit", ...honest } satisfies MyDayPlan);
+  }
+
+  return noMutation({
+    kind: "ready",
+    city,
+    stops,
+    total,
+    dailySafe,
+    simulation: simResult.data as import("@/types").PurchaseSimulation,
+    concept: dayPlanConcept(ctx.locale, stops),
+  } satisfies MyDayPlan);
+}
+
 export async function executeToolAsync(
   name: ToolName,
   args: Record<string, unknown>,
@@ -281,6 +401,8 @@ export async function executeToolAsync(
       return findBetterOption(args, ctx);
     case "planStretch":
       return planStretch(args, ctx);
+    case "planMyDay":
+      return planMyDay(args, ctx);
     default:
       return executeTool(name, args, ctx);
   }

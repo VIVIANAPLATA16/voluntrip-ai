@@ -3,7 +3,12 @@ import { formatMoney } from "@/lib/constants";
 import { t, type Locale } from "@/lib/i18n/dictionaries";
 import type { ExperienceRecommendationPayload, NaviResponse } from "./types";
 import { buildNaviResponse } from "./responseBuilder";
-import { applyStretchPlanToNaviResponse, formatExperienceToolReply } from "./experienceReply";
+import {
+  applyMyDayToNaviResponse,
+  applyStretchPlanToNaviResponse,
+  formatExperienceToolReply,
+} from "./experienceReply";
+import type { MyDayPlan } from "./myDayPlan";
 import { parseStretchNightsFromText } from "@/lib/experiences";
 import type { Experience, StretchPlanResult } from "@/lib/experiences";
 import { executeToolAsync, isCulturalTool } from "./experienceTools";
@@ -71,6 +76,7 @@ export type LocalAskIntent =
   | "why"
   | "alternative"
   | "stretch"
+  | "myday"
   | "unknown";
 
 export function detectLocalAskIntent(text: string): {
@@ -84,6 +90,13 @@ export function detectLocalAskIntent(text: string): {
     )
   ) {
     return { intent: "afford", tools: ["simulatePurchase", "getDailyBudget"] };
+  }
+  if (
+    /plan for today|plan para hoy|mi d[ií]a( hoy)?|what (should i |can i )?do today|qu[eé] hago hoy|qu[eé] hago con (el )?d[ií]a|plano (para )?hoje|o que (fa[cç]o|fazer) hoje|meu dia( hoje)?/i.test(
+      lower
+    )
+  ) {
+    return { intent: "myday", tools: ["planMyDay"] };
   }
   if (
     /stretch (my )?trip|stretch plan|plan my weekend|plan \d+ nights|planea mis pr[oó]ximas noches|armar plan|plan que estira|estirar (el )?viaje|planeje minhas noites|estic(a|ar) a viagem/i.test(
@@ -280,6 +293,9 @@ async function runCulturalAsk(
     args.city = ctx.trip?.city ?? "";
     args.nights = parseStretchNightsFromText(userText);
   }
+  if (tool === "planMyDay") {
+    args.city = ctx.trip?.city ?? "";
+  }
 
   const result = await executeToolAsync(tool, args, ctx);
   const executedTools: Array<{
@@ -309,7 +325,12 @@ async function runCulturalAsk(
 
   const content = formatExperienceToolReply(
     ctx.locale,
-    tool as "recommendExperience" | "explainRecommendation" | "findBetterOption" | "planStretch",
+    tool as
+      | "recommendExperience"
+      | "explainRecommendation"
+      | "findBetterOption"
+      | "planStretch"
+      | "planMyDay",
     result,
     simulation
   );
@@ -326,6 +347,9 @@ async function runCulturalAsk(
   }
   if (tool === "planStretch" && result.ok) {
     return applyStretchPlanToNaviResponse(ctx.locale, response, result.data as StretchPlanResult);
+  }
+  if (tool === "planMyDay" && result.ok) {
+    return applyMyDayToNaviResponse(ctx.locale, response, result.data as MyDayPlan);
   }
 
   return response;

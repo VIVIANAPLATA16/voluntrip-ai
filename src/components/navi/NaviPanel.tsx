@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { blobToAzureWav } from "@/lib/audio/wavEncode";
 import { parseNaviBold } from "@/lib/agent/naviText";
 import { naviAgent } from "@/lib/agent/agent";
+import { matchingDayPlanConcept } from "@/lib/agent/myDayPlan";
 import {
   GENERIC_PURCHASE_LABEL,
   confirmedPurchaseInput,
@@ -26,6 +27,7 @@ import { createId } from "@/lib/id";
 
 const QUICK: Array<{ labelKey: TranslationKey; promptKey: TranslationKey }> = [
   { labelKey: "navi.quick.tonight", promptKey: "navi.quick_prompt.tonight" },
+  { labelKey: "navi.quick.myday", promptKey: "navi.quick_prompt.myday" },
   { labelKey: "navi.quick.why", promptKey: "navi.quick_prompt.why" },
   { labelKey: "navi.quick.better", promptKey: "navi.quick_prompt.better" },
   { labelKey: "navi.quick.stretch", promptKey: "navi.quick_prompt.stretch" },
@@ -111,12 +113,17 @@ export function NaviPanel() {
   async function confirmSimulatedPurchase() {
     const sim = pendingSimulation;
     if (!sim || !trip) return;
-    const concept = purchaseConceptFromMessages(messages, sim);
+    const fromPlan = matchingDayPlanConcept(naviAgent.lastDayPlan, sim.purchaseAmount);
+    const concept = fromPlan ?? purchaseConceptFromMessages(messages, sim);
     if (concept === GENERIC_PURCHASE_LABEL) {
       await confirmSimulation();
       return;
     }
-    const input = confirmedPurchaseInput(sim, trip, "", messages);
+    const input = {
+      ...confirmedPurchaseInput(sim, trip, "", messages),
+      concept,
+    };
+    naviAgent.lastDayPlan = null;
     const tx = createTransaction(input);
     await addTransaction(tx);
     cancelSimulation();
@@ -371,7 +378,7 @@ export function NaviPanel() {
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-1.5 w-full min-w-0 pb-3">
+      <div className="grid grid-cols-3 gap-1.5 w-full min-w-0 overflow-x-hidden pb-3">
         {QUICK.map((q) => {
           const prompt = t(locale, q.promptKey);
           return (
@@ -380,7 +387,7 @@ export function NaviPanel() {
               type="button"
               title={prompt}
               onClick={() => void send(prompt)}
-              className="min-w-0 h-9 px-1 rounded-full border border-border bg-surface text-[10px] sm:text-xs leading-tight text-ink-muted hover:text-accent hover:border-accent/40 touch-target whitespace-nowrap overflow-hidden text-ellipsis"
+              className="min-h-10 min-w-0 h-auto px-1 py-1 rounded-full border border-border bg-surface text-[10px] sm:text-xs leading-tight text-ink-muted hover:text-accent hover:border-accent/40 touch-target whitespace-normal break-words motion-reduce:transition-none"
             >
               {t(locale, q.labelKey)}
             </button>

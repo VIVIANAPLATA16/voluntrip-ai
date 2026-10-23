@@ -79,6 +79,27 @@ describe("naviQlooCite", () => {
       taste: "reggaeton, Bad Bunny",
       source: "qloo",
     })).toContain("Qloo puso Fonda La Chismosa - La 70 en el #2 de 10");
+    expect(t("es", "navi.voice.qloo_rank", {
+      place: "Fonda La Chismosa - La 70",
+      rank: 2,
+      total: 10,
+      taste: "reggaeton, Bad Bunny",
+      source: "qloo",
+    })).toMatch(/Fuente: qloo/);
+    expect(t("pt", "navi.voice.qloo_rank", {
+      place: "Fonda La Chismosa - La 70",
+      rank: 2,
+      total: 10,
+      taste: "reggaeton, Bad Bunny",
+      source: "qloo",
+    })).toMatch(/Fonte: qloo/);
+    expect(t("es", "navi.voice.qloo_rank", {
+      place: "Fonda",
+      rank: 1,
+      total: 3,
+      taste: "salsa",
+      source: "qloo",
+    })).not.toMatch(/Source: qloo/);
   });
 
   it("does not name Qloo as the source for demo or baseline", () => {
