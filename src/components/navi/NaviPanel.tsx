@@ -17,7 +17,8 @@ import {
   GENERIC_PURCHASE_LABEL,
   confirmedPurchaseInput,
   formatConfirmedPurchaseMessage,
-  purchaseConceptFromUserText,
+  isWrittenConfirm,
+  purchaseConceptFromMessages,
 } from "@/lib/agent/purchaseLabel";
 import * as db from "@/lib/db/indexeddb";
 import { createTransaction } from "@/lib/finance/transactions";
@@ -110,16 +111,12 @@ export function NaviPanel() {
   async function confirmSimulatedPurchase() {
     const sim = pendingSimulation;
     if (!sim || !trip) return;
-    const lastUser = [...messages].reverse().find(function (message) {
-      return message.role === "user";
-    });
-    const userText = lastUser?.content ?? "";
-    const concept = purchaseConceptFromUserText(userText);
+    const concept = purchaseConceptFromMessages(messages, sim);
     if (concept === GENERIC_PURCHASE_LABEL) {
       await confirmSimulation();
       return;
     }
-    const input = confirmedPurchaseInput(sim, trip, userText);
+    const input = confirmedPurchaseInput(sim, trip, "", messages);
     const tx = createTransaction(input);
     await addTransaction(tx);
     cancelSimulation();
@@ -156,6 +153,13 @@ export function NaviPanel() {
     if (!msg) return;
     setErrorBanner(null);
     setText("");
+    if (pendingSimulation && isWrittenConfirm(msg)) {
+      setState("thinking");
+      await confirmSimulatedPurchase();
+      setState("success");
+      setTimeout(() => setState("idle"), 800);
+      return;
+    }
     setState("thinking");
     await askNavi(msg);
     setState("success");

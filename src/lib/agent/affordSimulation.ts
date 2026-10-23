@@ -1,6 +1,10 @@
 import type { PurchaseSimulation } from "@/types";
+import { formatMoney } from "@/lib/constants";
+import { t } from "@/lib/i18n/dictionaries";
 import type { NaviResponse } from "./types";
 import { detectLocalAskIntent, parseAmountCurrency } from "./localAsk";
+import { formatExperiencePlaceLabel, extractPlaceFromWhatIf } from "./purchaseLabel";
+import { naviQlooCite } from "./qlooVoice";
 import { simulationReply } from "./simulationReply";
 import { executeTool, type AgentContext } from "./tools";
 
@@ -39,9 +43,11 @@ export function attachAffordSimulation(
   }
 
   const base = ctx.trip?.baseCurrency || "USD";
-  const content = simulation
+  const budget = simulation
     ? simulationReply(ctx.locale, simulation, base)
     : response.message.content;
+  const placeLine = affordQlooLead(ctx, userText, simulation);
+  const content = [placeLine, budget].filter(Boolean).join("\n\n");
 
   return {
     ...response,
@@ -55,4 +61,29 @@ export function attachAffordSimulation(
       content,
     },
   };
+}
+
+function affordQlooLead(
+  ctx: AgentContext,
+  userText: string,
+  simulation?: PurchaseSimulation
+): string {
+  const best = ctx.lastRecommendation?.best;
+  if (!best || !simulation) return "";
+  const askedPlace = extractPlaceFromWhatIf(userText);
+  if (!askedPlace) return "";
+  const recPlace = formatExperiencePlaceLabel(best);
+  const placeMatches = Boolean(
+    recPlace && askedPlace.toLowerCase() === recPlace.toLowerCase()
+  );
+  const nameMatches = askedPlace.toLowerCase() === best.name.toLowerCase();
+  if (!placeMatches && !nameMatches) return "";
+
+  const cite = naviQlooCite(ctx.locale, best, Boolean(ctx.lastRecommendation?.usedBaseline));
+  const cost = t(ctx.locale, "navi.experience.estimated_cost", {
+    cost: formatMoney(simulation.purchaseAmount, simulation.purchaseCurrency, {
+      showCode: true,
+    }),
+  });
+  return [cite.text, cost].join("\n");
 }

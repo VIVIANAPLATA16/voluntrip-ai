@@ -54,10 +54,48 @@ export function purchaseConceptFromUserText(text: string): string {
   return extractPlaceFromWhatIf(text) ?? GENERIC_PURCHASE_LABEL;
 }
 
+export function isWrittenConfirm(text: string): boolean {
+  return /^(confirm(ar|e|ado)?( purchase| compra)?|confirmar|confirma)\s*[!.]*$/i.test(
+    text.trim()
+  );
+}
+
+function whatIfAmount(text: string): number | null {
+  const match = text.match(/what if i (?:spend|buy|book)\s+\$?\s*([\d,.]+)/i);
+  if (!match) return null;
+  const amount = Number.parseFloat(match[1].replace(/,/g, ""));
+  return Number.isFinite(amount) ? amount : null;
+}
+
+/**
+ * Place label for the open simulation: newest What if I spend $N at <lugar>?
+ * looking backward. Inner " at " in the name is kept. No place → Purchase.
+ */
+export function purchaseConceptFromMessages(
+  messages: Array<{ role: string; content: string }>,
+  simulation?: Pick<PurchaseSimulation, "purchaseAmount">
+): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message.role !== "user") continue;
+    const amount = whatIfAmount(message.content);
+    if (amount === null) continue;
+    if (
+      simulation &&
+      Math.round(amount) !== Math.round(simulation.purchaseAmount)
+    ) {
+      continue;
+    }
+    return extractPlaceFromWhatIf(message.content) ?? GENERIC_PURCHASE_LABEL;
+  }
+  return GENERIC_PURCHASE_LABEL;
+}
+
 export function confirmedPurchaseInput(
   simulation: Pick<PurchaseSimulation, "purchaseAmount" | "purchaseCurrency">,
   trip: Pick<Trip, "id" | "baseCurrency">,
-  userText: string
+  userText: string,
+  messages?: Array<{ role: string; content: string }>
 ): {
   tripId: string;
   amountOriginal: number;
@@ -72,7 +110,9 @@ export function confirmedPurchaseInput(
     amountOriginal: simulation.purchaseAmount,
     currencyOriginal: simulation.purchaseCurrency,
     currencyBase: trip.baseCurrency,
-    concept: purchaseConceptFromUserText(userText),
+    concept: messages
+      ? purchaseConceptFromMessages(messages, simulation)
+      : purchaseConceptFromUserText(userText),
     category: "general",
     source: "text",
   };

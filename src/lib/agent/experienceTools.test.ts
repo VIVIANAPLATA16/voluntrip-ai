@@ -294,6 +294,60 @@ describe("NAVI experience tools", () => {
     expect(why.message.content).not.toContain(entityId);
   });
 
+  it("cites Qloo #N of M with named signals in Medellín, Singapore, and Lima", async () => {
+    const entityId = "550e8400-e29b-41d4-a716-446655440000";
+    const cities = [
+      { city: "Medellín", country: "Colombia", countryCode: "CO", name: "El Social Salsa" },
+      { city: "Singapore", country: "Singapore", countryCode: "SG", name: "Clarke Quay Live" },
+      { city: "Lima", country: "Peru", countryCode: "PE", name: "Barranco Jazz" },
+    ];
+    for (const dest of cities) {
+      const searchPlaces = vi.fn(async () =>
+        qlooLive([
+          { ...salsaPlace, id: dest.name, name: dest.name, rank: 2 },
+          { ...salsaPlace, id: dest.name + "-2", name: dest.name + " Two", rank: 3 },
+          { ...salsaPlace, id: dest.name + "-3", name: dest.name + " Three", rank: 4 },
+        ])
+      );
+      const result = await runLocalAsk(
+        "I want to go out tonight",
+        ctx({
+          trip: { ...trip, city: dest.city, country: dest.country, countryCode: dest.countryCode },
+          culturalProfile: {
+            ...consentedProfile,
+            lovedEntities: [{ id: entityId, name: "Bad Bunny", type: "urn:entity:artist" }],
+          },
+          searchPlaces,
+        })
+      );
+      expect(searchPlaces.mock.calls[0][0]).toMatchObject({ city: dest.city });
+      expect(result.message.content).toMatch(new RegExp(`#\\d+ of \\d+`));
+      expect(result.message.content).toContain("salsa");
+      expect(result.message.content).toContain("Bad Bunny");
+      expect(result.message.content).toContain(dest.name);
+      expect(result.message.content).toMatch(/Source: qloo/);
+      expect(result.message.content).not.toContain(entityId);
+      expect(result.experienceRecommendation?.qlooSource).toBe("qloo");
+    }
+  });
+
+  it("unifies Why this? budget numbers with simulatePurchase", async () => {
+    const searchPlaces = vi.fn(async () => qlooLive([salsaPlace]));
+    const rec = await runLocalAsk("I want to go out tonight", ctx({ searchPlaces }));
+    const why = await runLocalAsk(
+      "why this?",
+      ctx({ lastRecommendation: rec.experienceRecommendation, searchPlaces })
+    );
+    expect(why.simulation).toBeDefined();
+    const dailyBefore = why.simulation!.dailyBudgetBefore.toFixed(2);
+    const dailyAfter = why.simulation!.dailyBudgetAfter.toFixed(2);
+    expect(why.message.content).toContain(dailyBefore);
+    expect(why.message.content).toContain(dailyAfter);
+    expect(why.message.content).toMatch(/From Qloo/);
+    expect(why.message.content).toMatch(/estimate/i);
+    expect(why.simulation!.purchaseAmount).toBe(rec.experienceRecommendation?.best?.estimatedCost.amount);
+  });
+
   it("findBetterOption reports none when there is no cheaper cultural alternative", async () => {
     const searchPlaces = vi.fn(async () => qlooLive([salsaPlace]));
     const rec = await recommendExperience(
