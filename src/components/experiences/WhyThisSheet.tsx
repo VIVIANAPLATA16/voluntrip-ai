@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { formatMoney } from "@/lib/constants";
 import { spendingStatusLabel } from "@/lib/i18n/labels";
+import { formatExperiencePlaceLabel } from "@/lib/agent/purchaseLabel";
 import { whyThisDetails } from "@/lib/experiences/whyThisDetails";
 import { t } from "@/lib/i18n/dictionaries";
 import { GENERIC_BASELINE_LABEL, type Experience } from "@/lib/experiences";
@@ -23,7 +24,7 @@ export function WhyThisSheet({
   experience: Experience | null;
   alternative: Experience | null;
   usedBaseline?: boolean;
-  onSimulate: (amount: number) => void;
+  onSimulate: (amount: number, placeLabel?: string | null) => void;
 }) {
   const locale = useAppStore(function (s) {
     return s.locale;
@@ -67,7 +68,12 @@ export function WhyThisSheet({
               {t(locale, "experience.filtered_by", { label: evidence.filter })}
             </p>
           ) : null}
-          {evidence.showAsQloo ? (
+          {evidence.showAsQloo && details.rankedByLovedEntities ? (
+            <p className="text-ink-muted break-words">
+              {t(locale, "experience.ranked_by_loved_entities")}
+            </p>
+          ) : null}
+          {evidence.showAsQloo && !details.rankedByLovedEntities ? (
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-ink-muted">
               <dt className="break-words">{t(locale, "experience.matched_tags")}</dt>
               <dd className="min-w-0 break-words">
@@ -143,7 +149,9 @@ export function WhyThisSheet({
 
         <Button
           className="min-h-10 w-full min-w-0 max-w-full"
-          onClick={() => onSimulate(experience.estimatedCost.amount)}
+          onClick={() =>
+            onSimulate(experience.estimatedCost.amount, formatExperiencePlaceLabel(experience))
+          }
         >
           {t(locale, "tonight.go")}
         </Button>

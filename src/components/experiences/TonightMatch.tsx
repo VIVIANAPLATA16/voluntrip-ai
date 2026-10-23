@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { naviAgent } from "@/lib/agent/agent";
 import { executeToolAsync } from "@/lib/agent/experienceTools";
+import { formatExperiencePlaceLabel, whatIfSpendText } from "@/lib/agent/purchaseLabel";
 import type { ExperienceRecommendationPayload } from "@/lib/agent/types";
 import { t } from "@/lib/i18n/dictionaries";
 import { useAppStore } from "@/store/appStore";
@@ -99,10 +100,10 @@ export function TonightMatch() {
     };
   }, [trip, pockets, transactions, goals, locale, culturalProfile, consented]);
 
-  const simulateEstimated = async (amount: number) => {
+  const simulateEstimated = async (amount: number, placeLabel?: string | null) => {
     setWhyOpen(false);
     setCompareOpen(false);
-    await askNavi(`What if I spend $${Math.round(amount)}?`);
+    await askNavi(whatIfSpendText(amount, placeLabel));
     router.push("/app/navi");
   };
 
@@ -193,7 +194,12 @@ export function TonightMatch() {
           <Button
             size="sm"
             className="min-h-10 min-w-0"
-            onClick={() => void simulateEstimated(payload.best!.estimatedCost.amount)}
+            onClick={() =>
+              void simulateEstimated(
+                payload.best!.estimatedCost.amount,
+                formatExperiencePlaceLabel(payload.best!)
+              )
+            }
           >
             {t(locale, "tonight.go")}
           </Button>
@@ -217,15 +223,15 @@ export function TonightMatch() {
         experience={payload?.best ?? null}
         alternative={payload?.alternative ?? null}
         usedBaseline={payload?.usedBaseline}
-        onSimulate={(amount) => void simulateEstimated(amount)}
+        onSimulate={(amount, placeLabel) => void simulateEstimated(amount, placeLabel)}
       />
       <TasteCompareSheet
         open={compareOpen}
         onClose={function () {
           setCompareOpen(false);
         }}
-        onSimulate={function (amount) {
-          void simulateEstimated(amount);
+        onSimulate={function (amount, placeLabel) {
+          void simulateEstimated(amount, placeLabel);
         }}
       />
     </section>

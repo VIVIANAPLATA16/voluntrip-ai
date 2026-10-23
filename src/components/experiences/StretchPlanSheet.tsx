@@ -18,6 +18,7 @@ import {
   type StretchPlanResult,
   type StretchPlanVersion,
 } from "@/lib/experiences";
+import { formatExperiencePlaceLabel } from "@/lib/agent/purchaseLabel";
 import { t, type Locale } from "@/lib/i18n/dictionaries";
 import { spendingStatusLabel } from "@/lib/i18n/labels";
 import { fetchQlooPlaces } from "@/lib/qloo/apiFetch";
@@ -32,7 +33,7 @@ export function StretchPlanSheet({
   open: boolean;
   nights: StretchNights;
   onClose: () => void;
-  onSimulate: (amount: number) => void;
+  onSimulate: (amount: number, placeLabel?: string | null) => void;
 }) {
   const reduceMotion = useReducedMotion();
   const locale = useAppStore(function (s) {
@@ -222,7 +223,10 @@ export function StretchPlanSheet({
                       variant="secondary"
                       className="h-auto min-h-10 min-w-0"
                       onClick={function () {
-                        onSimulate(night.place.estimatedCost.amount);
+                        onSimulate(
+                          night.place.estimatedCost.amount,
+                          formatExperiencePlaceLabel(night.place)
+                        );
                       }}
                     >
                       {t(locale, "stretch.simulate_night")}

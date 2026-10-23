@@ -14,6 +14,7 @@ import {
   type Experience,
 } from "@/lib/experiences";
 import { t, type Locale } from "@/lib/i18n/dictionaries";
+import { formatExperiencePlaceLabel } from "@/lib/agent/purchaseLabel";
 import { fetchQlooPlaces } from "@/lib/qloo/apiFetch";
 import { useAppStore } from "@/store/appStore";
 import { ExperienceCard } from "./ExperienceCard";
@@ -25,7 +26,7 @@ export function TasteCompareSheet({
 }: {
   open: boolean;
   onClose: () => void;
-  onSimulate: (amount: number) => void;
+  onSimulate: (amount: number, placeLabel?: string | null) => void;
 }) {
   const reduceMotion = useReducedMotion();
   const locale = useAppStore(function (s) {
@@ -186,7 +187,7 @@ function CompareColumn({
   city: string;
   locale: Locale;
   emptyKey: "tonight.compare.empty" | "tonight.signals_empty";
-  onSimulate: (amount: number) => void;
+  onSimulate: (amount: number, placeLabel?: string | null) => void;
 }) {
   return (
     <section className="min-w-0 max-w-full space-y-2">
@@ -214,7 +215,10 @@ function CompareColumn({
                   variant="secondary"
                   className="min-h-10 min-w-0 max-w-full whitespace-normal"
                   onClick={function () {
-                    onSimulate(place.estimatedCost.amount);
+                    onSimulate(
+                      place.estimatedCost.amount,
+                      formatExperiencePlaceLabel(place)
+                    );
                   }}
                 >
                   {t(locale, "tonight.go")}
