@@ -1,6 +1,7 @@
 import { formatMoney } from "@/lib/constants";
 import { GENERIC_BASELINE_LABEL } from "@/lib/experiences";
 import type { Experience, StretchPlanResult } from "@/lib/experiences";
+import { matchedTagsKind } from "@/lib/experiences/whyThisDetails";
 import { t, type Locale } from "@/lib/i18n/dictionaries";
 import type { ToolResult } from "./tools";
 import type { ExperienceRecommendationPayload, NaviResponse } from "./types";
@@ -11,15 +12,32 @@ function estimatedCostLabel(locale: Locale, experience: Experience): string {
   });
 }
 
-function fromQlooBlock(locale: Locale, experience: Experience, payload: ExperienceRecommendationPayload): string {
+function qlooSourceLabel(
+  experience: Experience,
+  payload: Pick<ExperienceRecommendationPayload, "usedBaseline" | "baselineLabel">
+): string {
+  return payload.usedBaseline || experience.whyQloo.source !== "qloo"
+    ? `${experience.whyQloo.source} (${payload.baselineLabel ?? GENERIC_BASELINE_LABEL})`
+    : experience.whyQloo.source;
+}
+
+function fromQlooBlock(
+  locale: Locale,
+  experience: Experience,
+  payload: Pick<ExperienceRecommendationPayload, "usedBaseline" | "baselineLabel">
+): string {
+  const source = qlooSourceLabel(experience, payload);
+  const kind = matchedTagsKind(experience.whyQloo);
+  if (kind === "loved_entities") {
+    return t(locale, "navi.experience.from_qloo_loved", {
+      rank: experience.whyQloo.rank,
+      source,
+    });
+  }
   const tags =
-    experience.whyQloo.matchedTags.length > 0
+    kind === "tags"
       ? experience.whyQloo.matchedTags.join(", ")
       : t(locale, "navi.experience.no_matched_tags");
-  const source =
-    payload.usedBaseline || experience.whyQloo.source !== "qloo"
-      ? `${experience.whyQloo.source} (${payload.baselineLabel ?? GENERIC_BASELINE_LABEL})`
-      : experience.whyQloo.source;
   return t(locale, "navi.experience.from_qloo", {
     tags,
     rank: experience.whyQloo.rank,
@@ -133,11 +151,18 @@ export function formatStretchPlanReply(locale: Locale, plan: StretchPlanResult):
       : "",
     plan.bothUnaffordable ? t(locale, "stretch.unaffordable") : "",
     first
-      ? t(locale, "navi.experience.from_qloo", {
-          tags: first.whyQloo.matchedTags.join(", ") || t(locale, "navi.experience.no_matched_tags"),
-          rank: first.whyQloo.rank,
-          source: first.whyQloo.source,
-        })
+      ? matchedTagsKind(first.whyQloo) === "loved_entities"
+        ? t(locale, "navi.experience.from_qloo_loved", {
+            rank: first.whyQloo.rank,
+            source: first.whyQloo.source,
+          })
+        : t(locale, "navi.experience.from_qloo", {
+            tags:
+              first.whyQloo.matchedTags.join(", ") ||
+              t(locale, "navi.experience.no_matched_tags"),
+            rank: first.whyQloo.rank,
+            source: first.whyQloo.source,
+          })
       : "",
     t(locale, "navi.experience.from_voluntrip", {
       cost: stretchedTotal,

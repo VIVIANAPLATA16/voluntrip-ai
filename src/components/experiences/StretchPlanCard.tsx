@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { whatIfSpendText } from "@/lib/agent/purchaseLabel";
 import { STRETCH_NIGHT_OPTIONS, type StretchNights } from "@/lib/experiences";
 import { t } from "@/lib/i18n/dictionaries";
 import { useAppStore } from "@/store/appStore";
@@ -25,9 +26,9 @@ export function StretchPlanCard() {
 
   if (!trip) return null;
 
-  async function simulateEstimated(amount: number) {
+  async function simulateEstimated(amount: number, placeLabel?: string | null) {
     setOpen(false);
-    await askNavi("What if I spend $" + Math.round(amount) + "?");
+    await askNavi(whatIfSpendText(amount, placeLabel));
     router.push("/app/navi");
   }
 
@@ -68,8 +69,8 @@ export function StretchPlanCard() {
         onClose={function () {
           setOpen(false);
         }}
-        onSimulate={function (amount) {
-          void simulateEstimated(amount);
+        onSimulate={function (amount, placeLabel) {
+          void simulateEstimated(amount, placeLabel);
         }}
       />
     </section>

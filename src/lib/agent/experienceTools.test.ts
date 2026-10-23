@@ -239,6 +239,61 @@ describe("NAVI experience tools", () => {
     );
   });
 
+  it("keeps What if I spend $25 at a place on simulatePurchase with the same amount", async () => {
+    const withPlace = await runLocalAsk(
+      "What if I spend $25 at Fonda La Chismosa - La 70?",
+      ctx()
+    );
+    const withoutPlace = await runLocalAsk("What if I spend $25?", ctx());
+    expect(withPlace.simulation?.purchaseAmount).toBe(25);
+    expect(withoutPlace.simulation?.purchaseAmount).toBe(25);
+    expect(withPlace.simulation?.purchaseAmount).toBe(withoutPlace.simulation?.purchaseAmount);
+    expect(withPlace.pendingTransaction).toBeUndefined();
+  });
+
+  it("explains Why this? with loved-entity ranking instead of Matched tags: none", async () => {
+    const entityId = "550e8400-e29b-41d4-a716-446655440000";
+    const nightlifeOnly = {
+      ...salsaPlace,
+      id: "fonda",
+      name: "Fonda La Chismosa",
+      neighborhood: "La 70",
+      rank: 2,
+      tags: [{ id: NIGHTLIFE, name: "Nightlife", type: "urn:tag:genre:place" }],
+    };
+    const searchPlaces = vi.fn(async () =>
+      qlooLive([
+        nightlifeOnly,
+        { ...nightlifeOnly, id: "bar-2", name: "Bar Dos", rank: 3 },
+        { ...nightlifeOnly, id: "bar-3", name: "Bar Tres", rank: 4 },
+      ])
+    );
+    const rec = await runLocalAsk(
+      "I want to go out tonight",
+      ctx({
+        culturalProfile: {
+          ...consentedProfile,
+          lovedEntities: [{ id: entityId, name: "Bad Bunny", type: "urn:entity:artist" }],
+        },
+        searchPlaces,
+      })
+    );
+    expect(rec.experienceRecommendation?.best?.whyQloo.entities).toEqual(["Bad Bunny"]);
+    expect(rec.experienceRecommendation?.best?.whyQloo.matchedTags).toEqual([]);
+
+    const why = await runLocalAsk(
+      "why this?",
+      ctx({
+        lastRecommendation: rec.experienceRecommendation,
+        searchPlaces,
+      })
+    );
+    expect(why.message.content).toMatch(/Ranked by your loved entities/);
+    expect(why.message.content).not.toMatch(/Matched tags: none/);
+    expect(why.message.content).toMatch(/Source: qloo/);
+    expect(why.message.content).not.toContain(entityId);
+  });
+
   it("findBetterOption reports none when there is no cheaper cultural alternative", async () => {
     const searchPlaces = vi.fn(async () => qlooLive([salsaPlace]));
     const rec = await recommendExperience(

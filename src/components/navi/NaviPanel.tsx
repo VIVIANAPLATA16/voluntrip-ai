@@ -13,6 +13,15 @@ import { cn } from "@/lib/utils";
 import { blobToAzureWav } from "@/lib/audio/wavEncode";
 import { parseNaviBold } from "@/lib/agent/naviText";
 import { naviAgent } from "@/lib/agent/agent";
+import {
+  GENERIC_PURCHASE_LABEL,
+  confirmedPurchaseInput,
+  formatConfirmedPurchaseMessage,
+  purchaseConceptFromUserText,
+} from "@/lib/agent/purchaseLabel";
+import * as db from "@/lib/db/indexeddb";
+import { createTransaction } from "@/lib/finance/transactions";
+import { createId } from "@/lib/id";
 
 const QUICK: Array<{ labelKey: TranslationKey; promptKey: TranslationKey }> = [
   { labelKey: "navi.quick.tonight", promptKey: "navi.quick_prompt.tonight" },
@@ -67,6 +76,7 @@ export function NaviPanel() {
   const pendingTransaction = useAppStore((s) => s.pendingTransaction);
   const confirmSimulation = useAppStore((s) => s.confirmSimulation);
   const cancelSimulation = useAppStore((s) => s.cancelSimulation);
+  const addTransaction = useAppStore((s) => s.addTransaction);
   const confirmPendingTransaction = useAppStore((s) => s.confirmPendingTransaction);
   const cancelPendingTransaction = useAppStore((s) => s.cancelPendingTransaction);
   const trip = useAppStore((s) => s.trip);
@@ -96,6 +106,37 @@ export function NaviPanel() {
       if (recordTimerRef.current) clearTimeout(recordTimerRef.current);
     };
   }, []);
+
+  async function confirmSimulatedPurchase() {
+    const sim = pendingSimulation;
+    if (!sim || !trip) return;
+    const lastUser = [...messages].reverse().find(function (message) {
+      return message.role === "user";
+    });
+    const userText = lastUser?.content ?? "";
+    const concept = purchaseConceptFromUserText(userText);
+    if (concept === GENERIC_PURCHASE_LABEL) {
+      await confirmSimulation();
+      return;
+    }
+    const input = confirmedPurchaseInput(sim, trip, userText);
+    const tx = createTransaction(input);
+    await addTransaction(tx);
+    cancelSimulation();
+    const content = formatConfirmedPurchaseMessage(locale, sim, concept);
+    if (!content) return;
+    const assistantMsg = {
+      id: createId(),
+      role: "assistant" as const,
+      content,
+      timestamp: new Date().toISOString(),
+      locale,
+    };
+    await db.saveMessage(assistantMsg);
+    useAppStore.setState(function (s) {
+      return { messages: [...s.messages, assistantMsg] };
+    });
+  }
 
   const stopMediaTracks = () => {
     mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -442,7 +483,7 @@ export function NaviPanel() {
             </div>
             <p className="text-sm text-ink-muted">{pendingSimulation.impactMessage}</p>
             <div className="flex gap-2">
-              <Button className="flex-1" onClick={() => void confirmSimulation()}>
+              <Button className="flex-1" onClick={() => void confirmSimulatedPurchase()}>
                 {t(locale, "navi.confirm_purchase")}
               </Button>
               <Button variant="secondary" className="flex-1" onClick={cancelSimulation}>

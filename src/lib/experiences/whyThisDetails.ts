@@ -20,6 +20,20 @@ export function readableEntityNames(names: readonly string[] | undefined): strin
   return out;
 }
 
+export type MatchedTagsKind = "tags" | "none" | "loved_entities";
+
+/**
+ * Honest matched-tags caption. Entities without overlapping tags are not "none".
+ * Never claims a tag match that did not happen.
+ */
+export function matchedTagsKind(
+  why: { matchedTags: readonly string[]; entities?: readonly string[] }
+): MatchedTagsKind {
+  if (why.matchedTags.length > 0) return "tags";
+  if (readableEntityNames(why.entities).length > 0) return "loved_entities";
+  return "none";
+}
+
 export type WhyThisDetails = {
   name: string;
   valueScore: number;
@@ -27,6 +41,7 @@ export type WhyThisDetails = {
   /** Readable matched tags when live Qloo. Empty + showAsQloo means "none". */
   matchedTags: string[];
   showMatchedNone: boolean;
+  rankedByLovedEntities: boolean;
   /** NAVI-style rank; null when the result is not live Qloo. */
   rank: number | null;
   entities: string[];
@@ -43,12 +58,17 @@ export function whyThisDetails(
   const evidence = qlooEvidenceForSheet(experience.whyQloo, usedBaseline);
   const entities = readableEntityNames(evidence.entities);
   const matchedTags = evidence.matchedPlaceTags ?? [];
+  const kind = matchedTagsKind({
+    matchedTags: experience.whyQloo.matchedTags,
+    entities,
+  });
   return {
     name: experience.name,
     valueScore: experience.valueScore,
     evidence: { ...evidence, entities },
     matchedTags,
-    showMatchedNone: evidence.showAsQloo && matchedTags.length === 0,
+    showMatchedNone: evidence.showAsQloo && kind === "none",
+    rankedByLovedEntities: evidence.showAsQloo && kind === "loved_entities",
     rank: evidence.showAsQloo ? evidence.rank : null,
     entities,
   };

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Experience, WhyQloo } from "./types";
-import { readableEntityNames, whyThisDetails } from "./whyThisDetails";
+import { t } from "@/lib/i18n/dictionaries";
+import { matchedTagsKind, readableEntityNames, whyThisDetails } from "./whyThisDetails";
 
 const queriedAt = "2026-10-19T12:00:00.000Z";
 const VEGAN = "urn:tag:genre:place:restaurant:vegan";
@@ -46,6 +47,19 @@ function experience(partial: {
   };
 }
 
+describe("matchedTagsKind", () => {
+  it("uses loved-entity copy only when entities were sent and no tags matched", () => {
+    expect(matchedTagsKind({ matchedTags: [], entities: ["Bad Bunny"] })).toBe("loved_entities");
+    expect(matchedTagsKind({ matchedTags: [], entities: [] })).toBe("none");
+    expect(matchedTagsKind({ matchedTags: [VEGAN], entities: ["Bad Bunny"] })).toBe("tags");
+    expect(t("en", "experience.ranked_by_loved_entities")).toBe("Ranked by your loved entities");
+    expect(t("es", "experience.ranked_by_loved_entities")).toBe("Ordenado según lo que amas");
+    expect(t("pt", "experience.ranked_by_loved_entities")).toBe(
+      "Ordenado conforme o que você ama"
+    );
+  });
+});
+
 describe("readableEntityNames", () => {
   it("keeps readable names and drops UUIDs, blanks, and duplicates", () => {
     expect(
@@ -87,6 +101,7 @@ describe("whyThisDetails", () => {
     expect(details.matchedTags).toEqual(["Vegan", "Live Music Venue"]);
     expect(details.matchedTags.join(" ")).not.toContain("urn:");
     expect(details.showMatchedNone).toBe(false);
+    expect(details.rankedByLovedEntities).toBe(false);
     expect(details.rank).toBe(2);
     expect(details.evidence.totalResults).toBe(8);
     expect(details.evidence.filter).toBe("nightlife");
@@ -101,8 +116,29 @@ describe("whyThisDetails", () => {
     expect(details.evidence.showAsQloo).toBe(true);
     expect(details.matchedTags).toEqual([]);
     expect(details.showMatchedNone).toBe(true);
+    expect(details.rankedByLovedEntities).toBe(false);
     expect(details.rank).toBe(3);
     expect(details.entities).toEqual([]);
+  });
+
+  it("says ranked by loved entities when Qloo used entities but no tags matched", () => {
+    const details = whyThisDetails(
+      experience({
+        usedWhy: {
+          source: "qloo",
+          matchedTags: [],
+          rank: 2,
+          entities: ["Bad Bunny"],
+          signals: [],
+        },
+      })
+    );
+    expect(details.evidence.showAsQloo).toBe(true);
+    expect(details.entities).toEqual(["Bad Bunny"]);
+    expect(details.matchedTags).toEqual([]);
+    expect(details.showMatchedNone).toBe(false);
+    expect(details.rankedByLovedEntities).toBe(true);
+    expect(details.rank).toBe(2);
   });
 
   it("does not invent Qloo fields when signals, entities, or filter are missing", () => {
@@ -116,6 +152,7 @@ describe("whyThisDetails", () => {
     expect(details.evidence.filter).toBeNull();
     expect(details.matchedTags).toEqual([]);
     expect(details.showMatchedNone).toBe(true);
+    expect(details.rankedByLovedEntities).toBe(false);
     expect(details.rank).toBe(1);
   });
 
