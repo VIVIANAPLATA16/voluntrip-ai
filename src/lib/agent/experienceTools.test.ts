@@ -5,7 +5,12 @@ import { executeTool } from "./tools";
 import { executeToolAsync, isMedellinCity, recommendExperience } from "./experienceTools";
 import { detectLocalAskIntent, runLocalAsk } from "./localAsk";
 import { applyStretchPlanToNaviResponse, formatStretchPlanReply } from "./experienceReply";
+import { formatMyDayReply } from "./myDayPlan";
+import { matchingDayPlanConcept } from "./myDayPlan";
+import { createTransaction } from "@/lib/finance/transactions";
+import { attachAffordSimulation } from "./affordSimulation";
 import { buildNaviResponse } from "./responseBuilder";
+import { formatMoney } from "@/lib/constants";
 import { GENERIC_BASELINE_LABEL, resetStretchPlanCache } from "@/lib/experiences";
 import type { StretchPlanResult } from "@/lib/experiences";
 
@@ -552,5 +557,220 @@ describe("planStretch NAVI", () => {
     expect(applied.message.content).not.toMatch(/9999/);
     expect(applied.message.content).not.toMatch(/lasts 9 more days/);
     expect(applied.stretchPlan).toBe(plan);
+  });
+});
+
+describe("planMyDay NAVI", () => {
+  const ENTITY_ID = "550e8400-e29b-41d4-a716-446655440000";
+  const dayPlaces: QlooPlace[] = [
+    { ...salsaPlace, id: "one", name: "Cafe Uno", priceLevel: 2, rank: 1 },
+    { ...salsaPlace, id: "two", name: "Cafe Dos", priceLevel: 2, rank: 2 },
+    { ...salsaPlace, id: "three", name: "Bar Tres", priceLevel: 2, rank: 3 },
+  ];
+  const dayPlacesWithDup: QlooPlace[] = [
+    ...dayPlaces,
+    { ...salsaPlace, id: "dup", name: "café uno", priceLevel: 1, rank: 4 },
+  ];
+
+  function daysRemaining(): number {
+    const daily = executeTool("getDailyBudget", {}, ctx());
+    return Number((daily.data as { daysRemaining?: number } | undefined)?.daysRemaining ?? 3);
+  }
+
+  function lovedProfile() {
+    return {
+      ...consentedProfile,
+      lovedEntities: [{ id: ENTITY_ID, name: "Bad Bunny", type: "urn:entity:artist" as const }],
+    };
+  }
+
+  it("detects my-day phrases before tonight or stretch", () => {
+    expect(detectLocalAskIntent("plan for today").intent).toBe("myday");
+    expect(detectLocalAskIntent("qué hago hoy").intent).toBe("myday");
+    expect(detectLocalAskIntent("plan para hoy").intent).toBe("myday");
+    expect(detectLocalAskIntent("plano para hoje").intent).toBe("myday");
+    expect(detectLocalAskIntent("what should I do today").intent).toBe("myday");
+    expect(detectLocalAskIntent("plan my weekend").intent).toBe("stretch");
+    expect(detectLocalAskIntent("I want to go out tonight").intent).toBe("recommend");
+  });
+
+  it("builds a 3-stop Qloo plan whose numbers match simulatePurchase", async () => {
+    const searchPlaces = vi.fn(async () => qlooLive(dayPlacesWithDup));
+    const local = await runLocalAsk(
+      "plan for today",
+      ctx({ culturalProfile: lovedProfile(), searchPlaces })
+    );
+    expect(searchPlaces).toHaveBeenCalled();
+    expect(local.dayPlan?.kind).toBe("ready");
+    if (local.dayPlan?.kind !== "ready") return;
+    expect(local.dayPlan.stops).toHaveLength(3);
+    expect(new Set(local.dayPlan.stops.map((stop) => stop.name.toLowerCase())).size).toBe(3);
+    expect(local.message.content).toBe(formatMyDayReply("en", local.dayPlan));
+    expect(local.simulation?.purchaseAmount).toBe(local.dayPlan.simulation.purchaseAmount);
+    const replay = executeTool(
+      "simulatePurchase",
+      { amount: local.dayPlan.total, currency: "USD" },
+      ctx()
+    );
+    expect(replay.ok).toBe(true);
+    const sim = replay.data as { purchaseAmount: number; dailyBudgetBefore: number; dailyBudgetAfter: number };
+    expect(local.dayPlan.simulation.purchaseAmount).toBe(sim.purchaseAmount);
+    expect(local.dayPlan.simulation.dailyBudgetBefore).toBe(sim.dailyBudgetBefore);
+    expect(local.dayPlan.simulation.dailyBudgetAfter).toBe(sim.dailyBudgetAfter);
+    expect(local.message.content).toContain(formatMoney(sim.dailyBudgetBefore, "USD"));
+    expect(local.message.content).toMatch(/Source: qloo/);
+    expect(local.message.content).toContain("Bad Bunny");
+    expect(local.message.content).not.toContain(ENTITY_ID);
+    expect(local.pendingTransaction).toBeUndefined();
+    expect(local.mutations).toEqual([]);
+  });
+
+  it("says when only 2 or 1 stop fits and invents nothing when none fit", async () => {
+    const days = daysRemaining();
+    const searchPlaces = vi.fn(async () => qlooLive(dayPlaces));
+    const two = await runLocalAsk(
+      "plan for today",
+      ctx({
+        trip: { ...trip, initialBudget: 50 * days },
+        searchPlaces,
+      })
+    );
+    expect(two.dayPlan?.kind).toBe("ready");
+    if (two.dayPlan?.kind === "ready") {
+      expect(two.dayPlan.stops).toHaveLength(2);
+      expect(two.message.content).toMatch(/Only 2 stops/);
+    }
+
+    const one = await runLocalAsk(
+      "plan for today",
+      ctx({
+        trip: { ...trip, initialBudget: 25 * days },
+        searchPlaces,
+      })
+    );
+    expect(one.dayPlan?.kind).toBe("ready");
+    if (one.dayPlan?.kind === "ready") {
+      expect(one.dayPlan.stops).toHaveLength(1);
+      expect(one.message.content).toMatch(/Only 1 stop/);
+    }
+
+    const none = await runLocalAsk(
+      "plan for today",
+      ctx({
+        trip: { ...trip, initialBudget: 10 * days },
+        searchPlaces,
+      })
+    );
+    expect(none.dayPlan?.kind).toBe("none_fit");
+    expect(none.message.content).toMatch(/will not invent/);
+    expect(none.message.content).not.toMatch(/Cafe Uno/);
+    expect(none.message.content).not.toMatch(/Source: qloo/);
+    expect(none.simulation).toBeUndefined();
+  });
+
+  it("does not query or invent Qloo stops without consent or when Qloo fails", async () => {
+    const searchPlaces = vi.fn(async () => qlooLive(dayPlaces));
+    const noConsent = await runLocalAsk(
+      "plan para hoy",
+      ctx({
+        locale: "es",
+        culturalProfile: { ...consentedProfile, consent: { granted: false, grantedAt: null } },
+        searchPlaces,
+      })
+    );
+    expect(searchPlaces).not.toHaveBeenCalled();
+    expect(noConsent.dayPlan?.kind).toBe("needs_consent");
+    expect(noConsent.message.content).not.toMatch(/Fuente: qloo|Source: qloo|Fonte: qloo/);
+    expect(noConsent.message.content).not.toMatch(/Cafe Uno|El Social Salsa/);
+
+    searchPlaces.mockClear();
+    const down = await runLocalAsk(
+      "plan for today",
+      ctx({
+        searchPlaces: vi.fn(async () => ({
+          source: "unavailable" as const,
+          places: [] as [],
+          reason: "QLOO_NETWORK" as const,
+        })),
+      })
+    );
+    expect(down.dayPlan?.kind).toBe("unavailable");
+    expect(down.message.content).not.toMatch(/Source: qloo/);
+    expect(down.message.content).not.toMatch(/Cafe Uno|Plaza Botero/);
+  });
+
+  it("cites named entities in Medellín, Singapore, and Lima", async () => {
+    const cities = [
+      { city: "Medellín", country: "Colombia", countryCode: "CO" },
+      { city: "Singapore", country: "Singapore", countryCode: "SG" },
+      { city: "Lima", country: "Peru", countryCode: "PE" },
+    ];
+    for (const dest of cities) {
+      const searchPlaces = vi.fn(async () => qlooLive(dayPlaces));
+      const result = await runLocalAsk(
+        "plan for today",
+        ctx({
+          trip: { ...trip, city: dest.city, country: dest.country, countryCode: dest.countryCode },
+          culturalProfile: lovedProfile(),
+          searchPlaces,
+        })
+      );
+      expect(searchPlaces.mock.calls[0][0]).toMatchObject({ city: dest.city });
+      expect(result.dayPlan?.kind).toBe("ready");
+      expect(result.message.content).toContain(dest.city);
+      expect(result.message.content).toContain("Bad Bunny");
+      expect(result.message.content).toMatch(/Source: qloo/);
+      expect(result.message.content).not.toContain(ENTITY_ID);
+    }
+  });
+
+  it("uses Fuente/Fonte in the my-day reply and confirms one named purchase", async () => {
+    const searchPlaces = vi.fn(async () => qlooLive(dayPlaces));
+    const es = await runLocalAsk(
+      "qué hago hoy",
+      ctx({ locale: "es", culturalProfile: lovedProfile(), searchPlaces })
+    );
+    expect(es.message.content).toMatch(/Fuente: qloo/);
+    expect(es.message.content).not.toMatch(/Source: qloo/);
+    const pt = await runLocalAsk(
+      "plano para hoje",
+      ctx({ locale: "pt", culturalProfile: lovedProfile(), searchPlaces })
+    );
+    expect(pt.message.content).toMatch(/Fonte: qloo/);
+    expect(pt.message.content).not.toMatch(/Source: qloo/);
+
+    expect(es.dayPlan?.kind).toBe("ready");
+    if (es.dayPlan?.kind !== "ready") return;
+    const concept = matchingDayPlanConcept(es.dayPlan, es.dayPlan.simulation.purchaseAmount);
+    expect(concept).toMatch(/^Plan de hoy: Cafe Uno, Cafe Dos/);
+    const tx = createTransaction({
+      tripId: trip.id,
+      amountOriginal: es.dayPlan.simulation.purchaseAmount,
+      currencyOriginal: es.dayPlan.simulation.purchaseCurrency,
+      currencyBase: trip.baseCurrency,
+      concept: concept ?? "Purchase",
+      category: "general",
+      source: "text",
+    });
+    expect(tx.concept).toBe(concept);
+    expect(tx.amountOriginal).toBe(es.dayPlan.simulation.purchaseAmount);
+  });
+
+  it("replaces invented Azure text with the plan object numbers", async () => {
+    const searchPlaces = vi.fn(async () => qlooLive(dayPlaces));
+    const tool = await executeToolAsync("planMyDay", {}, ctx({ searchPlaces }));
+    const invented = buildNaviResponse({
+      userText: "plan for today",
+      assistantContent: "Go to Plaza Botero and spend $9999. Source: qloo",
+      executedTools: [{ name: "planMyDay", args: {}, result: tool }],
+      locale: "en",
+    });
+    const attached = attachAffordSimulation("plan for today", ctx({ searchPlaces }), invented);
+    expect(tool.ok).toBe(true);
+    expect(attached.message.content).not.toMatch(/9999/);
+    expect(attached.message.content).not.toMatch(/Plaza Botero/);
+    if (tool.data && (tool.data as { kind?: string }).kind === "ready") {
+      expect(attached.message.content).toBe(formatMyDayReply("en", tool.data as never));
+    }
   });
 });

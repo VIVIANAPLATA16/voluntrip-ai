@@ -4,6 +4,7 @@ import type { Experience, StretchPlanResult } from "@/lib/experiences";
 import { t, type Locale } from "@/lib/i18n/dictionaries";
 import { naviQlooCite } from "./qlooVoice";
 import type { ToolResult } from "./tools";
+import { formatMyDayReply, type MyDayPlan } from "./myDayPlan";
 import type { ExperienceRecommendationPayload, NaviResponse } from "./types";
 
 function estimatedCostLabel(locale: Locale, experience: Experience): string {
@@ -182,9 +183,35 @@ export function applyStretchPlanToNaviResponse(
   };
 }
 
+export function applyMyDayToNaviResponse(
+  locale: Locale,
+  response: NaviResponse,
+  plan: MyDayPlan
+): NaviResponse {
+  const simulation = plan.kind === "ready" ? plan.simulation : undefined;
+  return {
+    ...response,
+    dayPlan: plan,
+    simulation,
+    pendingTransaction: undefined,
+    mutations: (response.mutations ?? []).filter(function (mutation) {
+      return mutation.type !== "transaction";
+    }),
+    message: {
+      ...response.message,
+      content: formatMyDayReply(locale, plan),
+    },
+  };
+}
+
 export function formatExperienceToolReply(
   locale: Locale,
-  tool: "recommendExperience" | "explainRecommendation" | "findBetterOption" | "planStretch",
+  tool:
+    | "recommendExperience"
+    | "explainRecommendation"
+    | "findBetterOption"
+    | "planStretch"
+    | "planMyDay",
   result: ToolResult,
   simulation?: PurchaseSimulation
 ): string {
@@ -194,6 +221,10 @@ export function formatExperienceToolReply(
 
   if (tool === "planStretch") {
     return formatStretchPlanReply(locale, result.data as StretchPlanResult);
+  }
+
+  if (tool === "planMyDay") {
+    return formatMyDayReply(locale, result.data as MyDayPlan);
   }
 
   if (tool === "recommendExperience") {

@@ -1,5 +1,6 @@
 import type { AgentMessage, PurchaseSimulation } from "@/types";
 import type { Experience, StretchPlanResult } from "@/lib/experiences";
+import type { MyDayPlan } from "./myDayPlan";
 import type { QlooResult } from "@/lib/qloo/types";
 
 export interface ExperienceRecommendationPayload {
@@ -22,4 +23,5 @@ export interface NaviResponse {
   mutations: Array<{ type: string; payload: unknown }>;
   experienceRecommendation?: ExperienceRecommendationPayload | null;
   stretchPlan?: StretchPlanResult | null;
+  dayPlan?: MyDayPlan | null;
 }

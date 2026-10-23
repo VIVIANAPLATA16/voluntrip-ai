@@ -61,6 +61,7 @@ const dictionaries = {
     "navi.quick.why": "Why this?",
     "navi.quick.better": "Better?",
     "navi.quick.stretch": "Stretch",
+    "navi.quick.myday": "Plan for today",
     "navi.quick_prompt.afford": "Can I afford a $200 tour?",
     "navi.quick_prompt.expense": "I spent 15 dollars on lunch.",
     "navi.quick_prompt.spend": "How much can I spend today?",
@@ -69,6 +70,7 @@ const dictionaries = {
     "navi.quick_prompt.why": "why this?",
     "navi.quick_prompt.better": "find me a better option",
     "navi.quick_prompt.stretch": "stretch my trip",
+    "navi.quick_prompt.myday": "plan for today",
     "navi.mock_limitation":
       "This question needs NAVI with real AI (configure Azure OpenAI) to answer accurately. In demo mode I can only help with budget, expenses, purchases, and protecting money.",
     "navi.goal": "Plan a goal",
@@ -132,6 +134,7 @@ const dictionaries = {
     "navi.experience.from_qloo_loved":
       "From Qloo\nRanked by your loved entities\nRank: {rank}\nSource: {source}",
     "navi.purchase_confirmed": "Purchase confirmed: {amount} for \"{place}\"",
+    "navi.voice.source": "Source",
     "navi.voice.qloo_rank":
       "Qloo ranked {place} #{rank} of {total} for your taste in {taste}. Source: {source}.",
     "navi.voice.qloo_loved":
@@ -140,6 +143,35 @@ const dictionaries = {
       "Qloo ranked {place} #{rank} of {total}. Source: {source}.",
     "navi.voice.not_qloo":
       "{place} is generic, not from Qloo ({source}).",
+    "navi.myday.headline": "Today in {city} ({count} stops):",
+    "navi.myday.stop":
+      "{n}. {name} — {cost} (estimate, not verified)",
+    "navi.myday.qloo":
+      "Qloo ranks them {ranks} for your taste in {taste}. {sourceWord}: {source}.",
+    "navi.myday.qloo_loved":
+      "Qloo ranks them {ranks} by your loved entities ({entities}). {sourceWord}: {source}.",
+    "navi.myday.qloo_plain":
+      "Qloo ranks them {ranks}. {sourceWord}: {source}.",
+    "navi.myday.rank": "#{n} of {m}",
+    "navi.myday.total": "Estimated total: {total} (not verified).",
+    "navi.myday.budget":
+      "Daily safe {dailyBefore} → {dailyAfter}. Protected money intact: {protected}. Runway: {runway}.",
+    "navi.myday.only_two": "Only 2 stops fit today's daily safe.",
+    "navi.myday.only_one": "Only 1 stop fits today's daily safe.",
+    "navi.myday.concept": "Today's plan: {stops}",
+    "navi.myday.today_safe": "Today's daily safe: {daily}.",
+    "navi.myday.no_profile":
+      "You don't have a Cultural DNA profile yet, so I will not query Qloo or invent today's stops.",
+    "navi.myday.no_consent":
+      "Cultural DNA consent is off, so I will not query Qloo or invent today's stops. Enable consent on your cultural profile.",
+    "navi.myday.unavailable":
+      "Qloo is unavailable now ({reason}). I will not invent today's stops.",
+    "navi.myday.demo":
+      "Qloo is in demo mode (no live key). I will not invent today's stops.",
+    "navi.myday.too_few":
+      "I need at least 3 distinct Qloo places in {city} to build today's plan. Found {found}.",
+    "navi.myday.none_fit":
+      "No Qloo stop fits today's daily safe ({daily}) in {city}. I will not invent a stop.",
     "navi.experience.protected_yes": "yes",
     "navi.experience.protected_no": "no",
     "culture.title": "Cultural DNA",
@@ -524,6 +556,7 @@ const dictionaries = {
     "navi.quick.why": "¿Por qué?",
     "navi.quick.better": "¿Otra?",
     "navi.quick.stretch": "Estirar",
+    "navi.quick.myday": "Plan para hoy",
     "navi.quick_prompt.afford": "¿Puedo permitirme un tour de 200 dólares?",
     "navi.quick_prompt.expense": "Gasté 15 dólares en el almuerzo.",
     "navi.quick_prompt.spend": "¿Cuánto puedo gastar hoy?",
@@ -532,6 +565,7 @@ const dictionaries = {
     "navi.quick_prompt.why": "por qué",
     "navi.quick_prompt.better": "otra opción",
     "navi.quick_prompt.stretch": "armar plan que estira mi viaje",
+    "navi.quick_prompt.myday": "plan para hoy",
     "navi.mock_limitation":
       "Esta pregunta necesita conexión a NAVI con IA real (configura Azure OpenAI) para responderse con precisión. En modo demo solo puedo ayudarte con presupuesto, gastos, compras y proteger dinero.",
     "navi.goal": "Planear una meta",
@@ -577,7 +611,7 @@ const dictionaries = {
     "navi.experience.estimated_cost":
       "Costo estimado: {cost} por persona (estimado, no es un precio verificado).",
     "navi.experience.from_qloo":
-      "From Qloo\nEtiquetas coincidentes: {tags}\nPuesto: {rank}\nSource: {source}",
+      "From Qloo\nEtiquetas coincidentes: {tags}\nPuesto: {rank}\nFuente: {source}",
     "navi.experience.from_voluntrip":
       "From Voluntrip\nCosto estimado: {cost} por persona (estimado, no es un precio verificado).\nGasto diario seguro: {dailyBefore} → {dailyAfter}.\nDinero protegido intacto: {protected}.\nRunway: {runway}.",
     "navi.experience.alternative":
@@ -593,14 +627,44 @@ const dictionaries = {
     "navi.experience.explain": "Por qué {name}:",
     "navi.experience.no_matched_tags": "ninguna",
     "navi.experience.from_qloo_loved":
-      "From Qloo\nOrdenado según lo que amas\nPuesto: {rank}\nSource: {source}",
+      "From Qloo\nOrdenado según lo que amas\nPuesto: {rank}\nFuente: {source}",
     "navi.purchase_confirmed": "Compra confirmada: {amount} para \"{place}\"",
+    "navi.voice.source": "Fuente",
     "navi.voice.qloo_rank":
-      "Qloo puso {place} en el #{rank} de {total} según tu gusto por {taste}. Source: {source}.",
+      "Qloo puso {place} en el #{rank} de {total} según tu gusto por {taste}. Fuente: {source}.",
     "navi.voice.qloo_loved":
-      "Qloo puso {place} en el #{rank} de {total}. Ordenado según lo que amas ({entities}). Source: {source}.",
+      "Qloo puso {place} en el #{rank} de {total}. Ordenado según lo que amas ({entities}). Fuente: {source}.",
     "navi.voice.qloo_rank_plain":
-      "Qloo puso {place} en el #{rank} de {total}. Source: {source}.",
+      "Qloo puso {place} en el #{rank} de {total}. Fuente: {source}.",
+    "navi.myday.headline": "Hoy en {city} ({count} paradas):",
+    "navi.myday.stop":
+      "{n}. {name} — {cost} (estimado, no verificado)",
+    "navi.myday.qloo":
+      "Qloo las recomienda {ranks} por tu gusto por {taste}. {sourceWord}: {source}.",
+    "navi.myday.qloo_loved":
+      "Qloo las ordena {ranks} según lo que amas ({entities}). {sourceWord}: {source}.",
+    "navi.myday.qloo_plain":
+      "Qloo las recomienda {ranks}. {sourceWord}: {source}.",
+    "navi.myday.rank": "#{n} de {m}",
+    "navi.myday.total": "Total estimado: {total} (no verificado).",
+    "navi.myday.budget":
+      "Gasto diario seguro {dailyBefore} → {dailyAfter}. Dinero protegido intacto: {protected}. Runway: {runway}.",
+    "navi.myday.only_two": "Solo caben 2 paradas en el daily safe de hoy.",
+    "navi.myday.only_one": "Solo cabe 1 parada en el daily safe de hoy.",
+    "navi.myday.concept": "Plan de hoy: {stops}",
+    "navi.myday.today_safe": "Daily safe de hoy: {daily}.",
+    "navi.myday.no_profile":
+      "Aún no tienes un perfil de Cultural DNA, así que no consultaré Qloo ni inventaré las paradas de hoy.",
+    "navi.myday.no_consent":
+      "El consentimiento de Cultural DNA está desactivado, así que no consultaré Qloo ni inventaré las paradas de hoy. Actívalo en tu perfil cultural.",
+    "navi.myday.unavailable":
+      "Qloo no está disponible ahora ({reason}). No inventaré las paradas de hoy.",
+    "navi.myday.demo":
+      "Qloo está en modo demo (sin clave en vivo). No inventaré las paradas de hoy.",
+    "navi.myday.too_few":
+      "Necesito al menos 3 lugares distintos de Qloo en {city} para armar el plan de hoy. Encontré {found}.",
+    "navi.myday.none_fit":
+      "Ninguna parada de Qloo cabe en el daily safe de hoy ({daily}) en {city}. No inventaré una parada.",
     "navi.voice.not_qloo":
       "{place} es genérico, not from Qloo ({source}).",
     "navi.experience.protected_yes": "sí",
@@ -986,6 +1050,7 @@ const dictionaries = {
     "navi.quick.why": "Por quê?",
     "navi.quick.better": "Outra?",
     "navi.quick.stretch": "Esticar",
+    "navi.quick.myday": "Plano para hoje",
     "navi.quick_prompt.afford": "Posso pagar um tour de 200 dólares?",
     "navi.quick_prompt.expense": "Gastei 15 dólares no almoço.",
     "navi.quick_prompt.spend": "Quanto posso gastar hoje?",
@@ -994,6 +1059,7 @@ const dictionaries = {
     "navi.quick_prompt.why": "por que isso",
     "navi.quick_prompt.better": "outra opção",
     "navi.quick_prompt.stretch": "planeje minhas noites e estique a viagem",
+    "navi.quick_prompt.myday": "plano para hoje",
     "navi.mock_limitation":
       "Esta pergunta precisa de conexão ao NAVI com IA real (configure Azure OpenAI) para ser respondida com precisão. No modo demo só posso ajudar com orçamento, gastos, compras e proteger dinheiro.",
     "navi.goal": "Planejar uma meta",
@@ -1039,7 +1105,7 @@ const dictionaries = {
     "navi.experience.estimated_cost":
       "Custo estimado: {cost} por pessoa (estimativa, não é um preço verificado).",
     "navi.experience.from_qloo":
-      "From Qloo\nTags correspondentes: {tags}\nPosição: {rank}\nSource: {source}",
+      "From Qloo\nTags correspondentes: {tags}\nPosição: {rank}\nFonte: {source}",
     "navi.experience.from_voluntrip":
       "From Voluntrip\nCusto estimado: {cost} por pessoa (estimativa, não é um preço verificado).\nGasto diário seguro: {dailyBefore} → {dailyAfter}.\nDinheiro protegido intacto: {protected}.\nRunway: {runway}.",
     "navi.experience.alternative":
@@ -1055,14 +1121,44 @@ const dictionaries = {
     "navi.experience.explain": "Por que {name}:",
     "navi.experience.no_matched_tags": "nenhuma",
     "navi.experience.from_qloo_loved":
-      "From Qloo\nOrdenado conforme o que você ama\nPosição: {rank}\nSource: {source}",
+      "From Qloo\nOrdenado conforme o que você ama\nPosição: {rank}\nFonte: {source}",
     "navi.purchase_confirmed": "Compra confirmada: {amount} para \"{place}\"",
+    "navi.voice.source": "Fonte",
     "navi.voice.qloo_rank":
-      "O Qloo colocou {place} na posição #{rank} de {total} pelo seu gosto por {taste}. Source: {source}.",
+      "O Qloo colocou {place} na posição #{rank} de {total} pelo seu gosto por {taste}. Fonte: {source}.",
     "navi.voice.qloo_loved":
-      "O Qloo colocou {place} na posição #{rank} de {total}. Ordenado conforme o que você ama ({entities}). Source: {source}.",
+      "O Qloo colocou {place} na posição #{rank} de {total}. Ordenado conforme o que você ama ({entities}). Fonte: {source}.",
     "navi.voice.qloo_rank_plain":
-      "O Qloo colocou {place} na posição #{rank} de {total}. Source: {source}.",
+      "O Qloo colocou {place} na posição #{rank} de {total}. Fonte: {source}.",
+    "navi.myday.headline": "Hoje em {city} ({count} paradas):",
+    "navi.myday.stop":
+      "{n}. {name} — {cost} (estimativa, não verificado)",
+    "navi.myday.qloo":
+      "O Qloo as recomenda {ranks} pelo seu gosto por {taste}. {sourceWord}: {source}.",
+    "navi.myday.qloo_loved":
+      "O Qloo as ordena {ranks} conforme o que você ama ({entities}). {sourceWord}: {source}.",
+    "navi.myday.qloo_plain":
+      "O Qloo as recomenda {ranks}. {sourceWord}: {source}.",
+    "navi.myday.rank": "#{n} de {m}",
+    "navi.myday.total": "Total estimado: {total} (não verificado).",
+    "navi.myday.budget":
+      "Gasto diário seguro {dailyBefore} → {dailyAfter}. Dinheiro protegido intacto: {protected}. Runway: {runway}.",
+    "navi.myday.only_two": "Só cabem 2 paradas no daily safe de hoje.",
+    "navi.myday.only_one": "Só cabe 1 parada no daily safe de hoje.",
+    "navi.myday.concept": "Plano de hoje: {stops}",
+    "navi.myday.today_safe": "Daily safe de hoje: {daily}.",
+    "navi.myday.no_profile":
+      "Você ainda não tem um perfil de Cultural DNA, então não vou consultar o Qloo nem inventar as paradas de hoje.",
+    "navi.myday.no_consent":
+      "O consentimento de Cultural DNA está desligado, então não vou consultar o Qloo nem inventar as paradas de hoje. Ative o consentimento no seu perfil cultural.",
+    "navi.myday.unavailable":
+      "O Qloo está indisponível agora ({reason}). Não vou inventar as paradas de hoje.",
+    "navi.myday.demo":
+      "O Qloo está em modo demo (sem chave ao vivo). Não vou inventar as paradas de hoje.",
+    "navi.myday.too_few":
+      "Preciso de pelo menos 3 lugares distintos do Qloo em {city} para montar o plano de hoje. Encontrei {found}.",
+    "navi.myday.none_fit":
+      "Nenhuma parada do Qloo cabe no daily safe de hoje ({daily}) em {city}. Não vou inventar uma parada.",
     "navi.voice.not_qloo":
       "{place} é genérico, not from Qloo ({source}).",
     "navi.experience.protected_yes": "sim",

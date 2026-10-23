@@ -6,6 +6,8 @@ import { detectLocalAskIntent, parseAmountCurrency } from "./localAsk";
 import { formatExperiencePlaceLabel, extractPlaceFromWhatIf } from "./purchaseLabel";
 import { naviQlooCite } from "./qlooVoice";
 import { simulationReply } from "./simulationReply";
+import { applyMyDayToNaviResponse } from "./experienceReply";
+import type { MyDayPlan } from "./myDayPlan";
 import { executeTool, type AgentContext } from "./tools";
 
 function wantsPurchaseSimulation(userText: string): boolean {
@@ -20,6 +22,13 @@ export function attachAffordSimulation(
   ctx: AgentContext,
   response: NaviResponse
 ): NaviResponse {
+  const dayCall = response.message.toolCalls?.find(function (call) {
+    return call.name === "planMyDay" && call.result;
+  });
+  if (dayCall?.result && (dayCall.result as MyDayPlan).kind) {
+    response = applyMyDayToNaviResponse(ctx.locale, response, dayCall.result as MyDayPlan);
+  }
+
   if (!wantsPurchaseSimulation(userText)) return response;
 
   let simulation = response.simulation;

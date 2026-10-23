@@ -58,7 +58,8 @@ export type ToolName =
   | "recommendExperience"
   | "explainRecommendation"
   | "findBetterOption"
-  | "planStretch";
+  | "planStretch"
+  | "planMyDay";
 
 export interface ToolResult {
   ok: boolean;
@@ -281,6 +282,17 @@ export const toolDefinitions: ToolDefinition[] = [
     parameters: emptyParams,
   },
   {
+    name: "planMyDay",
+    description:
+      "Build a 2–3 stop Qloo day plan that fits today's daily safe spend. Copy every total and daily-safe number from the tool result. Never invent places or costs. Never records a purchase until Confirm.",
+    parameters: {
+      type: "object",
+      properties: {
+        city: { type: "string", description: "City to search (defaults to the active trip city)" },
+      },
+    },
+  },
+  {
     name: "planStretch",
     description:
       "Build a multi-night stretch plan from live Qloo places for the trip city. Same Cultural DNA for Best match and Stretched. Never records a purchase. Do not invent totals — copy numbers from the tool result.",
@@ -487,6 +499,7 @@ export function executeTool(
       case "explainRecommendation":
       case "findBetterOption":
       case "planStretch":
+      case "planMyDay":
         return {
           ok: false,
           error: `${name} must be executed asynchronously`,
