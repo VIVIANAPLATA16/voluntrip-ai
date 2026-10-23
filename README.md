@@ -4,7 +4,7 @@
 
 Live demo: [https://voluntrip-ai.vercel.app](https://voluntrip-ai.vercel.app)
 
-Voluntrip AI is a local-first PWA for volunteers and long-stay travelers. It computes daily safe spend, keeps protected money locked, and asks NAVI to simulate a purchase before anything is recorded. Recommendations come from Qloo place Insights for the active trip city, not from a generic LLM inventing venues.
+Voluntrip AI is a local-first PWA for volunteers and long-stay travelers on a fixed budget. It computes daily safe spend, keeps protected money locked, and asks NAVI to simulate a purchase before anything is recorded. Recommendations come from Qloo place Insights for the active trip city, not from a generic LLM inventing venues.
 
 ---
 
@@ -22,9 +22,9 @@ Without consent, the app will not query Qloo. Tonight in Medellín may still sho
 
 ## The problem and who it is for
 
-Travelers on a fixed volunteer or backpacker budget mix “money I can spend” with “money I must not touch.” A generic chatbot can suggest a bar. It cannot say whether that bar fits today’s daily safe, or whether it matches the traveler’s taste in this city.
+Volunteers and long-stay travelers on a fixed budget mix “money I can spend” with “money I must not touch.” A generic chatbot can suggest a bar. It cannot say whether that bar fits today’s daily safe, or whether it matches the traveler’s taste in this city.
 
-Voluntrip AI is for volunteers, backpackers, and long-stay travelers who need both: a hard budget rule and a taste-aware place list for the city they are actually in.
+Voluntrip AI launched for volunteers. The same daily safe, protected pockets, and Qloo taste list work for any traveler with a fixed budget — backpackers and digital nomads included. They need both a hard budget rule and a taste-aware place list for the city they are actually in.
 
 ---
 

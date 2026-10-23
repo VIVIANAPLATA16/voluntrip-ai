@@ -6,7 +6,7 @@ Technical description of what the repository actually ships. For the product pit
 
 ## What the system is
 
-A Next.js 15 App Router PWA (React 19, TypeScript). The traveler’s trip, budget, Cultural DNA, and NAVI messages live in the browser (Zustand + IndexedDB). Qloo Taste API is called only from server routes. NAVI can run as local tool templates or, when configured, as Azure OpenAI with the same tools.
+A Next.js 15 App Router PWA (React 19, TypeScript). It is for volunteers and long-stay travelers on a fixed budget. The traveler’s trip, budget, Cultural DNA, and NAVI messages live in the browser (Zustand + IndexedDB). Qloo Taste API is called only from server routes. NAVI can run as local tool templates or, when configured, as Azure OpenAI with the same tools.
 
 The product answers two questions in one place:
 
