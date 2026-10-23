@@ -129,7 +129,7 @@ Browser (Next.js App Router PWA)
 | Optional cloud | Supabase sync stub + email backup card |
 | Optional voice/OCR | Azure Speech (`/api/navi/speech`), Azure Vision (`/api/navi/ocr`) |
 
-Older finance/PWA notes live in [ARCHITECTURE.md](./ARCHITECTURE.md) (dated August 2025). That file still describes Chiang Mai as the main demo shortcut and does not document Qloo, Cultural DNA, or the current Medellín/Singapore demos. Prefer this README for the hackathon surface.
+The full technical description is in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 ---
 

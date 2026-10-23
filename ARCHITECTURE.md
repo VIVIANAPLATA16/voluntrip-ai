@@ -1,1137 +1,257 @@
-# Voluntrip AI — Arquitectura y Documentación Técnica del Sistema
+# Voluntrip AI — Architecture
 
-> **Versión del documento:** 0.1.0  
-> **Repositorio:** `voluntrip-ai`  
-> **Última actualización:** Agosto 2025
+Technical description of what the repository actually ships. For the product pitch, live demo, and how to run it, see [README.md](./README.md).
 
 ---
 
-## Tabla de contenidos
+## What the system is
 
-1. [Visión General del Producto](#1-visión-general-del-producto)
-2. [Stack Tecnológico Completo](#2-stack-tecnológico-completo)
-3. [Arquitectura de Alto Nivel](#3-arquitectura-de-alto-nivel)
-4. [Estructura del Proyecto](#4-estructura-del-proyecto)
-5. [Pipeline de Datos Geográficos (Destinos)](#5-pipeline-de-datos-geográficos-destinos)
-6. [Componentes Clave y Flujos de UI](#6-componentes-clave-y-flujos-de-ui)
-7. [PWA y Estado Offline](#7-pwa-y-estado-offline)
-8. [Motor Financiero (DRS)](#8-motor-financiero-drs)
-9. [NAVI — Agente de IA Financiera](#9-navi--agente-de-ia-financiera)
-10. [Modelos de Datos y Tipado TypeScript](#10-modelos-de-datos-y-tipado-typescript)
-11. [Persistencia: IndexedDB y Sync Cloud](#11-persistencia-indexeddb-y-sync-cloud)
-12. [Internacionalización (i18n)](#12-internacionalización-i18n)
-13. [Guía de Comandos y Variables de Entorno](#13-guía-de-comandos-y-variables-de-entorno)
-14. [Decisiones Arquitectónicas y Notas Operativas](#14-decisiones-arquitectónicas-y-notas-operativas)
+A Next.js 15 App Router PWA (React 19, TypeScript). The traveler’s trip, budget, Cultural DNA, and NAVI messages live in the browser (Zustand + IndexedDB). Qloo Taste API is called only from server routes. NAVI can run as local tool templates or, when configured, as Azure OpenAI with the same tools.
+
+The product answers two questions in one place:
+
+1. How much can I spend today without touching protected money?
+2. Which places in *this* city fit my taste *and* that daily safe?
+
+Question 2 is Qloo-powered. Without Insights, Tonight, Compare, Stretch, and Plan for today have no honest place list for an arbitrary city.
+
+Travel Buddy / group ranking is not built.
 
 ---
 
-## 1. Visión General del Producto
-
-### Nombre y eslogan
-
-| Campo | Valor |
-|-------|-------|
-| **Nombre** | Voluntrip AI |
-| **Eslogan principal** | *"Your money needs a compass."* |
-| **Tagline extendido** | *"Volunteer anywhere. Budget smart. Travel forever."* |
-| **Descripción corta** | Your AI Financial Travel Companion |
-
-El eslogan aparece en el paso de bienvenida del onboarding (`onboarding.welcome_sub` en `src/lib/i18n/dictionaries.ts`). NAVI se describe internamente como *"Your AI financial compass"*.
-
-### Propósito del software
-
-Voluntrip AI es una **PWA SaaS mobile-first y local-first** diseñada para:
-
-- Voluntarios internacionales (Worldpackers, Workaway, etc.)
-- Mochileros y viajeros de larga estancia
-- Nómadas digitales con presupuesto ajustado
-
-Responde a una pregunta central del viajero:
-
-> **¿Cuánto puedo gastar hoy sin arruinar el resto del viaje?**
-
-### Propuesta de valor
-
-| Problema del viajero | Solución Voluntrip AI |
-|----------------------|------------------------|
-| No sabe cuánto puede gastar hoy | **DRS** (Daily/Weekly Safe Spend) calculado en tiempo real |
-| Mezcla dinero protegido con gasto libre | **Pockets** con bloqueo (`protected: true`) |
-| Gastos en múltiples monedas | Transacciones con `amountOriginal` + `amountBase` + `exchangeRate` |
-| Decisiones impulsivas de compra | **NAVI** simula compras antes de confirmarlas |
-| Sin conexión en ruta | **IndexedDB** + Service Worker offline-first |
-| Sin cuenta ni servidor | Funciona 100 % local; sync cloud opcional (Supabase stub) |
-
-### Flujo principal del usuario
+## Layers
 
 ```
-Landing (/) → Onboarding (7 pasos) → Dashboard (/app)
-                    ↓
-              Demo trip (Chiang Mai) — atajo opcional
+UI (App Router pages + components)
+  → Zustand store (`src/store/appStore.ts`)
+      → IndexedDB `voluntrip-ai` v2
+      → Finance engine (`src/lib/finance/`) — no network
+      → NAVI agent (`src/lib/agent/`)
+          → local tools, or POST /api/navi → Azure
+          → POST /api/qloo        → Qloo Insights (places)
+          → POST /api/qloo/entities → Qloo Entity Search
 ```
+
+| Layer | Role |
+| --- | --- |
+| UI | Onboarding, dashboard (Tonight, Stretch, Cultural DNA), NAVI, pockets, activity, goals, trip |
+| Zustand | In-memory trip, pockets, transactions, cultural profile, pending Confirm/Cancel |
+| IndexedDB | Persistence; works without an account |
+| Finance | DRS, daily safe, runway, `simulatePurchase`, protected pockets |
+| Experiences | Discover → filter → rank (Value Score) → Stretch / Compare / Why this? |
+| Qloo client | Server-only Insights + Entity Search; never imported from `"use client"` modules |
+| NAVI | Tools + replies. Money and places come from tools, not from invented prose |
 
 ---
 
-## 2. Stack Tecnológico Completo
+## App routes
 
-### Frontend
+| Path | Screen |
+| --- | --- |
+| `/` | Redirects to `/onboarding` or `/app` after hydrate |
+| `/onboarding` | 7 steps (0–6): language, destination, dates, budget, pockets, review. Demo shortcuts on step 0 |
+| `/app` | Home dashboard |
+| `/app/navi` | NAVI panel |
+| `/app/pockets` | Pockets |
+| `/app/activity` | Transactions |
+| `/app/goals` | Goals |
+| `/app/trip` | Trip + reset local data + optional cloud backup |
+| `/auth/callback` | Supabase magic-link return |
 
-| Capa | Tecnología | Versión / Notas |
-|------|------------|-----------------|
-| Framework | **Next.js** (App Router) | 15.x |
-| Lenguaje | **TypeScript** | 5.x |
-| UI Runtime | **React** | 19.x |
-| Estilos | **Tailwind CSS** | 3.4.x — dark mode nativo (`bg-bg`, `text-ink`, `accent`) |
-| Animaciones | **Framer Motion** | 12.x — acordeones, transiciones onboarding |
-| Iconos | **Lucide React** | 0.475.x |
-| Estado cliente | **Zustand** | 5.x — `src/store/appStore.ts` |
-| Fuentes | **Google Fonts** — Sora (display) + Outfit (body) | via `next/font` |
-| Build dev | Turbopack | `npm run dev --turbopack` |
+Server routes (secrets stay here):
 
-### Backend y API
+| Route | Input | Output |
+| --- | --- | --- |
+| `POST /api/qloo` | `{ city, tags?, take?, filterTags?, entities? }` | `{ source, places, reason? }` |
+| `POST /api/qloo/entities` | `{ query, take? }` | `{ source, entities, reason? }` |
+| `POST /api/navi` | `{ action: "ask" \| "process" \| "insight", … }` | `NaviResponse` (ask attaches Confirm/Cancel simulation when needed) |
+| `POST /api/navi/speech` | multipart audio | `{ text }` or 503 if Azure Speech is not configured |
+| `POST /api/navi/ocr` | `{ imageBase64 }` | `{ text }` or 503 if Azure Vision is not configured |
 
-| Capa | Tecnología | Estado |
-|------|------------|--------|
-| API Routes | Next.js Route Handlers | `/api/navi` — proxy seguro para Azure OpenAI |
-| Autenticación | **No implementada aún** | Local-first sin login obligatorio |
-| Cloud DB | **Supabase** (preparado) | Stub en `src/lib/sync/supabaseSync.ts` |
-| IA | **Azure OpenAI** (preparado) | Mock por defecto (`MOCK_AI=true`) |
-
-> **Importante:** No hay backend propio persistente hoy. La app corre como SPA/PWA con persistencia en el navegador.
-
-### Base de datos local
-
-| Componente | Tecnología |
-|------------|------------|
-| Client DB | **IndexedDB** via librería `idb` |
-| Nombre DB | `voluntrip-ai` |
-| Stores | `profile`, `trips`, `pockets`, `transactions`, `goals`, `insights`, `messages`, `meta` |
-
-### PWA
-
-| Asset | Ubicación |
-|-------|-----------|
-| Manifest | `public/manifest.webmanifest` |
-| Service Worker | `public/sw.js` |
-| Fallback offline | `public/offline.html` |
-| Iconos | `public/icons/` (generados con `npm run icons`) |
-
-### Scripts de automatización y datos geográficos
-
-| Script | Comando | Propósito |
-|--------|---------|-----------|
-| `scripts/build-destinations.js` | `npm run destinations:build` | Genera dataset de 250 países |
-| `scripts/volunteer-hubs.json` | (input manual/curado) | Ciudades hub de voluntariado |
-| `scripts/generate-icons.js` | `npm run icons` | PNG PWA 192/512 |
-
-**Dependencias de generación (devDependencies):**
-
-- `country-state-city` — biblioteca global de países/estados/ciudades
-- `countries-list` — metadatos ISO (continente, moneda)
-
-### Testing
-
-| Herramienta | Alcance |
-|-------------|---------|
-| **Vitest** | Motor financiero (`src/lib/finance/finance.test.ts`) |
-| **ESLint** | `next lint` en build |
-
-### Integraciones preparadas (no conectadas por defecto)
-
-- Supabase (sync cloud)
-- Azure OpenAI (NAVI conversacional)
-- Azure AI Vision (OCR recibos — interfaz stub)
-- Exchange Rate API (tipos de cambio en vivo)
+The browser talks to Qloo only through `/api/qloo` and `/api/qloo/entities` (`src/lib/qloo/apiFetch.ts`). It never sends an API key.
 
 ---
 
-## 3. Arquitectura de Alto Nivel
+## IndexedDB
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    UI Layer (React / Next.js)               │
-│  Onboarding │ Dashboard │ Pockets │ NAVI │ Activity │ Trip  │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────────────┐
-│              Zustand Store (src/store/appStore.ts)          │
-│  profile │ trip │ pockets │ transactions │ goals │ messages   │
-└──────────────┬───────────────────────────┬──────────────────┘
-               │                           │
-┌──────────────▼──────────────┐  ┌─────────▼───────────────────┐
-│   Financial Engine (pure TS)  │  │   NAVI Agent (src/lib/agent)│
-│   DRS │ Runway │ Simulation  │  │   Tools │ Memory │ Prompts │
-└──────────────┬──────────────┘  └─────────┬───────────────────┘
-               │                           │
-┌──────────────▼───────────────────────────▼──────────────────┐
-│              IndexedDB (idb) — local-first                    │
-│              Database: voluntrip-ai                            │
-└──────────────────────────┬──────────────────────────────────┘
-                           │ (stub)
-┌──────────────────────────▼──────────────────────────────────┐
-│              Supabase Sync (src/lib/sync/supabaseSync.ts)     │
-└─────────────────────────────────────────────────────────────┘
+- Name: `voluntrip-ai`
+- Version: **2** (`VOLUNTRIP_DB_VERSION` in `src/lib/db/indexeddb.ts`)
+- Upgrades are additive. Stores are never deleted.
 
-┌─────────────────────────────────────────────────────────────┐
-│  Static Data: destinations-countries.json (build-time)      │
-│  Generated by: scripts/build-destinations.js                │
-└─────────────────────────────────────────────────────────────┘
-```
+| Store | Key | Indexes | Added |
+| --- | --- | --- | --- |
+| `profile` | `id` | — | v1 |
+| `trips` | `id` | — | v1 |
+| `pockets` | `id` | `by-trip` (`tripId`) | v1 |
+| `transactions` | `id` | `by-trip` (`tripId`) | v1 |
+| `goals` | `id` | `by-trip` (`tripId`) | v1 |
+| `insights` | `id` | `by-trip` (`tripId`) | v1 |
+| `messages` | `id` | — | v1 |
+| `meta` | `key` | — | v1 |
+| `cultural_profile` | `id` | — | **v2** |
 
-### Principios arquitectónicos
-
-1. **Local-first:** La fuente de verdad es IndexedDB; la nube es opcional.
-2. **Motor financiero puro:** Toda la lógica DRS/runway vive en `src/lib/finance/` sin dependencias de React.
-3. **Agente desacoplado:** NAVI (`src/lib/agent/`) no importa componentes UI.
-4. **Datos geográficos en build-time:** El JSON de destinos se genera en CI/prebuild, no en runtime.
-5. **Secrets en servidor:** Azure keys solo en Route Handlers, nunca en el cliente.
+Cultural DNA (consent, likes, one filter, loved entities) is the v2 store. Reset local data clears the database from My Trip.
 
 ---
 
-## 4. Estructura del Proyecto
+## Zustand
 
-```
-voluntrip-ai/
-├── ARCHITECTURE.md              # Este documento
-├── README.md                    # Quick start y overview
-├── package.json                 # Scripts y dependencias
-├── next.config.js               # Config Next.js (reactStrictMode)
-├── tailwind.config.js           # Design tokens (colores, fuentes)
-├── tsconfig.json                # Path alias @/* → src/*
-├── vitest.config.ts               # Tests del motor financiero
-├── .env.example                 # Plantilla de variables de entorno
-│
-├── public/
-│   ├── manifest.webmanifest     # PWA manifest
-│   ├── sw.js                    # Service Worker offline-first
-│   ├── offline.html             # Página fallback sin red
-│   └── icons/                   # icon-192.png, icon-512.png, apple-touch
-│
-├── scripts/
-│   ├── build-destinations.js    # Generador del dataset geográfico
-│   ├── volunteer-hubs.json      # Hubs curados (~150 países)
-│   └── generate-icons.js        # Generador de iconos PWA
-│
-└── src/
-    ├── app/                     # Next.js App Router
-    │   ├── layout.tsx           # Root layout, fonts, PWA meta
-    │   ├── page.tsx             # Redirect: /onboarding o /app
-    │   ├── globals.css          # Tailwind + CSS variables
-    │   ├── onboarding/
-    │   │   └── page.tsx         # Flujo de onboarding
-    │   ├── app/                 # App autenticada (post-onboarding)
-    │   │   ├── layout.tsx       # AppShell wrapper
-    │   │   ├── page.tsx         # Dashboard principal
-    │   │   ├── pockets/         # Gestión de bolsillos
-    │   │   ├── activity/        # Historial de transacciones
-    │   │   ├── trip/            # Detalle del viaje
-    │   │   ├── goals/           # Metas de ahorro
-    │   │   └── navi/            # Panel NAVI fullscreen
-    │   └── api/
-    │       └── navi/route.ts    # POST — proxy Azure OpenAI
-    │
-    ├── components/
-    │   ├── ui/                  # Design system (Button, Card, Input…)
-    │   ├── finance/             # HeroFinancialCard, MoneyRunwayCard…
-    │   ├── home/                # HomeDashboard
-    │   ├── layout/              # AppShell, DesktopSidebar
-    │   ├── navi/                # NaviPanel
-    │   ├── onboarding/          # OnboardingFlow, DestinationPicker
-    │   └── pwa/                 # InstallPrompt
-    │
-    ├── lib/
-    │   ├── agent/               # NAVI: agent.ts, tools.ts, memory.ts
-    │   ├── ai/                  # azureOpenAI.ts (mock + real interface)
-    │   ├── constants.ts         # CURRENCIES + re-exports destinos
-    │   ├── data/
-    │   │   └── destinations-countries.json  # 250 países (generado)
-    │   ├── db/                  # indexeddb.ts
-    │   ├── demo/                # sampleData.ts (Chiang Mai)
-    │   ├── destination-regions.ts  # Tabs, búsqueda, alias ES/PT
-    │   ├── destinations.ts      # Loader + interfaces destino
-    │   ├── finance/             # Motor DRS (pure functions + tests)
-    │   ├── i18n/                # dictionaries.ts (en/es/pt)
-    │   ├── sync/                # supabaseSync.ts (stub)
-    │   ├── id.ts                # createId() — UUID con fallback HTTP
-    │   └── utils.ts             # cn() — clsx helper
-    │
-    ├── store/
-    │   └── appStore.ts          # Zustand — estado global
-    │
-    └── types/
-        └── index.ts             # Interfaces de dominio
-```
+`useAppStore` hydrates from IndexedDB and holds:
 
-### Responsabilidad de módulos clave
+- `profile`, `trip`, `pockets`, `transactions`, `goals`, `insights`, `messages`
+- `culturalProfile`
+- `locale` (`en` \| `es` \| `pt`)
+- `pendingSimulation` / `pendingTransaction` (Confirm/Cancel; nothing is recorded until Confirm)
+- Demo loaders: `loadMedellinDemo`, `loadSingaporeDemo`, `loadDemo` (Chiang Mai)
 
-| Módulo | Responsabilidad |
-|--------|-----------------|
-| `src/app/` | Routing, layouts, API routes |
-| `src/components/ui/` | Componentes reutilizables del design system |
-| `src/lib/finance/` | Cálculos DRS, runway, simulación — **sin side effects** |
-| `src/lib/agent/` | Orquestación NAVI + tool calling |
-| `src/lib/db/` | CRUD IndexedDB |
-| `src/lib/destinations.ts` | Carga del JSON + tipos `DestinationCountry` |
-| `src/lib/destination-regions.ts` | Tabs continentales + búsqueda global + alias |
-| `src/store/appStore.ts` | Estado React + persistencia + NAVI |
-| `scripts/` | Build-time automation |
+Ask-NAVI writes the assistant message and, when present, `pendingSimulation`.
 
 ---
 
-## 5. Pipeline de Datos Geográficos (Destinos)
+## Modules
 
-### Resumen del dataset
+### `src/lib/qloo`
 
-| Métrica | Valor |
-|---------|-------|
-| Países | **250** |
-| Ciudades totales | **3,862** |
-| Promedio ciudades/país | ~15.4 |
-| Ciudades máx por país | 20 |
-| Ciudades mín por país | 8 (cuando hay datos) |
-| Países populares | 197 |
-| Tamaño JSON | ~75 KB |
-| Archivo generado | `src/lib/data/destinations-countries.json` |
+| File | Job |
+| --- | --- |
+| `client.ts` | Server-only. Insights `GET /v2/insights` (`filter.type=urn:entity:place`, `filter.location.query`, optional `signal.interests.tags`, `filter.tags`, `signal.interests.entities`). Entity Search `GET /search`. Tags `GET /v2/tags`. Key from the environment; never logged |
+| `request.ts` | Place body may only contain `city`, `tags`, `take`, `filterTags`, `entities`. Extra fields (including email) are rejected. At most 5 entity UUIDs, 1 filter tag |
+| `normalize.ts` | Maps Insights/Search payloads. Drops entities missing name or UUID |
+| `apiFetch.ts` | Browser → `/api/qloo` and `/api/qloo/entities` |
+| `demo.ts` | Labeled fixture when the key is empty (`source: "demo"`, `reason: "NO_KEY"`) |
+| `types.ts` | `QlooResult` = `qloo` \| `demo` \| `unavailable` |
 
-**Distribución por región (campo `region`):**
+### `src/lib/culture`
 
-| Región (`region`) | Países | Tab UI |
-|-------------------|--------|--------|
-| `americas` | 55 | 🌎 América |
-| `europe` | 52 | 🇪🇺 Europa |
-| `asia-oceania` | 67 | 🌏 Asia & Oceanía |
-| `africa-me` | 76 | 🌍 África & Medio Oriente |
+Consent is the gate. `getConsentedQlooTagIds`, `getConsentedLovedEntities`, and the filter helper return empty without `consent.granted`. Up to 8 verified likes (`CULTURAL_DNA_MAX_SIGNALS`). One hard filter. Up to 5 loved entities from Entity Search (UI: **Tell me what you love** / **Dime qué amas**).
 
-### Diagrama del pipeline
+### `src/lib/experiences`
 
-```
-┌─────────────────────┐     ┌──────────────────────┐
-│ country-state-city  │     │   countries-list     │
-│ (Country, City,     │     │   (continente,       │
-│  State libraries)   │     │    moneda ISO)       │
-└─────────┬───────────┘     └──────────┬───────────┘
-          │                            │
-          └────────────┬───────────────┘
-                       │
-          ┌────────────▼────────────┐
-          │  volunteer-hubs.json    │
-          │  (ciudades curadas      │
-          │   Worldpackers-style)   │
-          └────────────┬────────────┘
-                       │
-          ┌────────────▼────────────┐
-          │ build-destinations.js │
-          │  npm run destinations │
-          │  :build               │
-          └────────────┬────────────┘
-                       │
-          ┌────────────▼────────────────────────┐
-          │ destinations-countries.json         │
-          │  [{ country, code, flag,            │
-          │     localCurrency, cities[],        │
-          │     popular, region }]              │
-          └────────────┬────────────────────────┘
-                       │
-          ┌────────────▼────────────┐
-          │  destinations.ts        │
-          │  (import estático JSON) │
-          └────────────┬────────────┘
-                       │
-          ┌────────────▼────────────┐
-          │ destination-regions.ts  │
-          │  tabs + búsqueda + alias│
-          └────────────┬────────────┘
-                       │
-          ┌────────────▼────────────┐
-          │  DestinationPicker.tsx  │
-          └─────────────────────────┘
-```
+| File | Job |
+| --- | --- |
+| `discovery.ts` | One Insights call. Strip hotels / non-tourist category-genre tags. Dedupe by folded name. If loved entities were sent and fewer than 3 places remain, return an empty candidate list |
+| `rank.ts` | Value Score sort |
+| `evaluate.ts` | `valueScore = 0.40 cultural + 0.35 financial + 0.25 context` (Voluntrip’s formula, not Qloo’s) |
+| `costEstimate.ts` | USD bands from `priceLevel` or category. Always an estimate; not a Qloo price |
+| `compareTaste.ts` | Two Insights queries: city-only vs city + consented tags/entities |
+| `stretchPlan.ts` | Multi-night plan from the same ranked list |
+| `baseline.ts` | Medellín generic list, labeled **generic, not from Qloo**. Not used for Plan for today |
+| `whyQlooEvidence.ts` / `whyThisDetails.ts` | Honest Why this? copy (names, not UUIDs) |
 
-### `scripts/volunteer-hubs.json`
+### `src/lib/agent`
 
-Archivo JSON curado manualmente con **~150 países**. Cada clave es un código ISO de 2 letras; el valor es un array de nombres de ciudades hub prioritarias para voluntariado y turismo mochilero.
+NAVI. `tools.ts` is the finance + cultural catalog. `experienceTools.ts` runs Tonight, Why this?, Better?, Stretch, Plan for today. `localAsk.ts` is the heuristic path. `agent.ts` uses local ask unless `NEXT_PUBLIC_MOCK_AI=false`, then `POST /api/navi`. Azure still must copy totals from tool results (`attachAffordSimulation`, stretch/day-plan overwrite).
 
-Ejemplo (Colombia):
+Finance tools include `getTripContext`, `getCurrentBalance`, `getProtectedMoney`, `getDailyBudget`, `getWeeklyBudget`, `getMoneyRunway`, `getSpendingAnalysis`, `simulatePurchase`, `convertCurrency`, `protectMoney`, `createGoal`, and transaction/pocket helpers.
 
-```json
-"CO": [
-  "Bogotá", "Medellín", "Cali", "Cartagena", "Santa Marta",
-  "San Andrés", "Barranquilla", "Bucaramanga", "Pereira",
-  "Manizales", "Villa de Leyva", "Salento", "Guatapé",
-  "Popayán", "Leticia", "San Gil", "Tayrona", "Coffee Region",
-  "Pasto", "Armenia"
-]
-```
+Cultural tools: `recommendExperience`, `explainRecommendation`, `findBetterOption`, `planMyDay`, `planStretch`.
 
-Estas ciudades tienen **prioridad máxima** al construir la lista final de cada país.
+### `src/lib/finance`
 
-### `scripts/build-destinations.js`
+Pure TypeScript. No Qloo imports.
 
-#### Entrada
+- Daily safe = (balance − protected pockets) / remaining days
+- Weekly DRS = (balance − protected pockets) / remaining weeks
+- `simulatePurchase` — before/after available, daily, weekly; does not write a transaction
+- Protected pockets never count as free-to-spend
+- FX uses `MOCK_RATES_USD` (no live rate client in `src/` yet)
 
-- `Country.getAllCountries()` — todos los países ISO
-- `City.getCitiesOfCountry(code)` — ciudades por país
-- `State.getStatesOfCountry(code)` — estados/provincias
-- `volunteer-hubs.json` — hubs curados
-- `countries-list` — continente y moneda
+### Other
 
-#### Algoritmo `pickCities()` (por país)
-
-1. **Hubs curados** — ciudades de `volunteer-hubs.json` (match fuzzy contra biblioteca)
-2. **Capitales regionales** — match estado ↔ ciudad
-3. **Scoring** — ciudades con nombre corto, sin prefijos administrativos (`SKIP_NAME` regex)
-4. **Mínimo 8 ciudades** — relleno con cualquier ciudad válida si faltan
-
-Límites: `MAX_CITIES = 20`, `MIN_CITIES = 8`.
-
-#### Función `regionFor(code)`
-
-Mapea continente ISO → región UI:
-
-```javascript
-// NA, SA → "americas"
-// EU → "europe"
-// OC → "asia-oceania"
-// AF → "africa-me"
-// AS → "asia-oceania" EXCEPTO Middle East codes → "africa-me"
-```
-
-Middle East codes: `IL, PS, JO, LB, SY, IQ, IR, SA, AE, QA, KW, BH, OM, YE, TR, AM, AZ, GE, CY`.
-
-#### Salida por país
-
-```javascript
-{
-  country: "Colombia",       // nombre en inglés (country-state-city)
-  code: "CO",
-  flag: "🇨🇴",               // emoji desde ISO code
-  localCurrency: "COP",      // primera moneda de countries-list
-  cities: ["Bogotá", "Medellín", ...],  // max 20
-  popular: true,             // POPULAR_CODES ∪ tiene volunteer hub
-  region: "americas"
-}
-```
-
-#### Orden final
-
-Popular primero, luego alfabético por nombre de país.
-
-### Comandos de automatización
-
-```bash
-# Regenerar dataset manualmente
-npm run destinations:build
-
-# Se ejecuta automáticamente antes de cada build de producción
-npm run build   # → prebuild hook → destinations:build
-```
-
-### Capa de runtime: `src/lib/destinations.ts`
-
-Importa el JSON estáticamente (tree-shaken en build):
-
-```typescript
-import rawCountries from "./data/destinations-countries.json";
-
-export const DESTINATION_COUNTRIES: DestinationCountry[] =
-  rawCountries as DestinationCountry[];
-
-export const COUNTRY_COUNT = DESTINATION_COUNTRIES.length; // 250
-```
-
-También expone `DESTINATIONS` — lista plana legacy de `{ city, country, ... }` para consumidores antiguos.
-
-### Sistema de tabs y búsqueda: `src/lib/destination-regions.ts`
-
-#### Tabs (pestañas)
-
-```typescript
-export const DESTINATION_TABS = [
-  { id: "popular",       label: "🔥 Populares" },
-  { id: "americas",      label: "🌎 América" },
-  { id: "europe",        label: "🇪🇺 Europa" },
-  { id: "asia-oceania",  label: "🌏 Asia & Oceanía" },
-  { id: "africa-me",     label: "🌍 África & Medio Oriente" },
-];
-```
-
-**Tab Populares** — 12 países top de voluntariado (orden fijo):
-
-```typescript
-export const TOP_VOLUNTEER_COUNTRY_CODES = [
-  "CO", "BR", "MX", "TH", "CR", "PT", "ID", "AR", "PE", "ZA", "VN", "ES",
-];
-```
-
-#### Búsqueda global: `searchAllDestinationCountries()`
-
-- Busca en **todos los 250 países** y **3,862 ciudades** sin límite `.slice()`
-- Normaliza acentos (`normalizeSearch()` — NFD + strip diacritics)
-- **Alias multilenguaje ES/PT** → código ISO (`francia` → `FR`, `tailandia` → `TH`)
-- Auto-expande el acordeón del primer país coincidente
-- Reordena ciudades: matches primero dentro del acordeón
-
-> **Bug histórico corregido:** Anteriormente `searchDestinationCountries()` aplicaba `.slice(0, 50)` sobre países populares alfabéticos, truncando la lista en **Ecuador**. Eliminado.
+- `src/lib/demo/` — Medellín, Singapore, Chiang Mai sample trips
+- `src/lib/ai/` — Azure OpenAI / Speech / Vision **server** modules
+- `src/lib/i18n/` — `en` / `es` / `pt`
+- `src/lib/sync/` — optional Supabase push/pull after auth
 
 ---
 
-## 6. Componentes Clave y Flujos de UI
-
-### Onboarding — 7 pasos (`OnboardingFlow.tsx`)
-
-| Step | Pantalla | Componente clave |
-|------|----------|------------------|
-| 0 | Bienvenida + eslogan | Logo, botones Start / Demo |
-| 1 | Destino | **`DestinationPicker`** |
-| 2 | Fechas | Date inputs + contador de días |
-| 3 | Moneda base | Grid de `CURRENCIES` |
-| 4 | Setup voluntario | Host name + benefits chips |
-| 5 | Presupuesto inicial | Input numérico |
-| 6 | Pockets protegidos | Emergency + return flight |
-
-Al completar: `completeOnboarding()` → persiste en IndexedDB → redirect `/app`.
-
-**Demo trip:** `loadDemo()` carga datos de Chiang Mai desde `src/lib/demo/sampleData.ts`.
-
-### `DestinationPicker.tsx` — Arquitectura del componente
+## Recommendation data flow
 
 ```
-┌─────────────────────────────────────────┐
-│  🔍 Search input                        │
-├─────────────────────────────────────────┤
-│  [🔥 Populares] [🌎 América] [🇪🇺 …]    │  ← oculto si hay búsqueda
-├─────────────────────────────────────────┤
-│  Selected location badge (si hay value) │
-├─────────────────────────────────────────┤
-│  ┌─ 🇨🇴 Colombia ────────── ▼ ─┐       │
-│  │  📍 Anywhere in Colombia      │       │
-│  │     Medellín                  │       │
-│  │     Bogotá                    │       │
-│  │     Cali                      │       │
-│  └───────────────────────────────┘       │
-│  ┌─ 🇧🇷 Brazil ───────────── ▼ ─┐       │
-│  └───────────────────────────────┘       │
-└─────────────────────────────────────────┘
+Consent off ──► no Qloo HTTP call
+                 Tonight in Medellín may show labeled baseline
+                 Other cities / Plan for today stay empty (honest)
+
+Consent on
+  → Cultural DNA tags (≤8) + optional 1 filter + loved entity UUIDs (≤5)
+  → POST /api/qloo  →  Insights for the active trip city
+  → strip lodging + non-tourist tags
+  → dedupe folded names
+  → if entities sent and < 3 places left → empty
+  → rankExperiences (Value Score)
+  → simulatePurchase on the chosen cost (or the Plan for today sum)
+  → NAVI / dashboard shows estimates + Qloo cite
+  → Confirm records one transaction; Cancel records none
 ```
 
-#### Estado local
-
-```typescript
-const [query, setQuery] = useState("");
-const [activeTab, setActiveTab] = useState<DestinationTab>("popular");
-const [expandedCountryId, setExpandedCountryId] = useState<string | null>(null);
-```
-
-#### Lógica de filtrado
-
-```typescript
-const isSearching = query.trim().length > 0;
-
-const { countries, autoExpandCode } = useMemo(() => {
-  if (isSearching) {
-    return searchAllDestinationCountries(query, DESTINATION_COUNTRIES);
-  }
-  return {
-    countries: getCountriesByTab(activeTab, DESTINATION_COUNTRIES),
-    autoExpandCode: null,
-  };
-}, [query, activeTab, isSearching]);
-```
-
-| Modo | Tabs visibles | Fuente de datos |
-|------|---------------|-----------------|
-| Sin búsqueda | ✅ Sí | `getCountriesByTab(activeTab)` — subset regional |
-| Con búsqueda | ❌ No | `searchAllDestinationCountries()` — dataset completo |
-
-#### Selección de destino
-
-```typescript
-export type SelectedLocation = {
-  country: string;
-  countryCode: string;
-  flag: string;
-  localCurrency: CurrencyCode;
-  city: string | null;  // null = "Anywhere in {country}"
-};
-```
-
-#### Acordeón por país
-
-- **Framer Motion** `AnimatePresence` + `height: auto` para expand/collapse
-- Opción general: *"Anywhere in {country}"* con icono `MapPin`
-- Ciudades resaltadas cuando coinciden con la búsqueda
-- Check mark en selección activa
-
-### Dashboard y navegación
-
-**Mobile:** Bottom navigation (`NavigationBar`) con NAVI como acción central.
-
-**Desktop:** Sidebar (`DesktopSidebar`) + panel NAVI lateral (xl+).
-
-**Rutas post-onboarding:**
-
-| Ruta | Pantalla |
-|------|----------|
-| `/app` | Dashboard — DRS, runway, actividad reciente |
-| `/app/pockets` | Bolsillos protegidos y abiertos |
-| `/app/activity` | Historial de transacciones |
-| `/app/trip` | Detalle del viaje + reset local data |
-| `/app/goals` | Metas de ahorro |
-| `/app/navi` | Panel NAVI fullscreen |
+Compare runs the Insights step twice (with and without taste). Stretch and Plan for today reuse the same discover + rank path. Plan for today picks 2–3 distinct names whose estimated costs fit today’s daily safe, then simulates the **sum** as one purchase.
 
 ---
 
-## 7. PWA y Estado Offline
+## Provenance
 
-### Manifest (`public/manifest.webmanifest`)
+`source` is a discriminated union. `"qloo"` is only set after a successful, normalized live response.
 
-```json
-{
-  "name": "Voluntrip AI",
-  "short_name": "Voluntrip",
-  "start_url": "/app",
-  "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#070b12",
-  "theme_color": "#070b12"
-}
-```
+| `source` | When | What the UI may say |
+| --- | --- | --- |
+| `qloo` | Live Insights or Entity Search | `Source: qloo` / `Fuente: qloo` / `Fonte: qloo`. The field value stays `"qloo"` |
+| `demo` | Empty API key (`NO_KEY`) | Generic / demo. Never claimed as Qloo |
+| `unavailable` | Auth, rate limit, timeout, bad payload, network | Qloo is down. No invented live list |
 
-### Service Worker (`public/sw.js`)
-
-Estrategia **network-first con fallback a cache**:
-
-1. **Install:** precache de `/`, `/offline.html`, `/manifest.webmanifest`, `/icons/icon-192.png`
-2. **Fetch GET:** intenta red → cachea respuesta 200 → fallback cache → `/offline.html` en navigate
-3. **Activate:** limpia caches antiguas (`voluntrip-v1`)
-
-Registro en `AppShell.tsx`:
-
-```typescript
-if ("serviceWorker" in navigator) {
-  void navigator.serviceWorker.register("/sw.js");
-}
-```
-
-### Detección offline en store
-
-```typescript
-// AppShell.tsx
-window.addEventListener("online", () => setOffline(false));
-window.addEventListener("offline", () => setOffline(true));
-```
-
-El flag `offline` en Zustand alimenta badges UI (*"Offline"* / *"Sync ready"*).
-
-### Install prompt
-
-`InstallPrompt.tsx` — captura `beforeinstallprompt` para "Add to Home Screen".
-
-### Consideraciones mobile
-
-- Viewport: `viewportFit: cover`, `100dvh`
-- Safe areas: `env(safe-area-inset-bottom)` en padding de nav y onboarding
-- Apple web app meta en `layout.tsx`
+Unavailable reasons: `NO_KEY`, `QLOO_AUTH`, `QLOO_RATE_LIMIT`, `QLOO_TIMEOUT`, `QLOO_BAD_RESPONSE`, `QLOO_NETWORK`.
 
 ---
 
-## 8. Motor Financiero (DRS)
+## What is sent to Qloo
 
-Ubicación: `src/lib/finance/` — funciones puras, testeadas con Vitest.
+Place Insights (server):
 
-### Fórmulas core
+- `filter.type` = `urn:entity:place`
+- `filter.location.query` = trip city
+- `signal.interests.tags` = consented tag URNs (optional)
+- `filter.tags` = at most one consented filter URN (optional)
+- `signal.interests.entities` = consented loved-entity UUIDs (optional)
+- `take`
 
-```
-Balance actual    = initialBudget − Σ transacciones (en moneda base)
-Dinero protegido  = Σ pockets donde protected === true
-Disponible real   = Balance actual − Dinero protegido
+Entity Search: `query` + `take` only. Response kept as `{ id, name, type }`.
 
-DRS semanal       = Disponible real / Semanas restantes
-DRS diario        = Disponible real / Días restantes
-```
-
-Implementación en `budget.ts`:
-
-```typescript
-export function calculateDRS(realAvailable: number, weeksRemaining: number): number {
-  if (weeksRemaining <= 0) return 0;
-  return realAvailable / weeksRemaining;
-}
-
-export function calculateDailyBudget(realAvailable: number, daysRemaining: number): number {
-  if (daysRemaining <= 0) return 0;
-  return realAvailable / daysRemaining;
-}
-```
-
-### Money Runway (`runway.ts`)
-
-Proyecta cuándo se acabará el dinero vs. fecha fin del viaje:
-
-- `on_track` — runway ≥ trip end
-- `careful` — runway ligeramente antes
-- `at_risk` — runway significativamente antes
-
-### Simulación de compra (`simulation.ts`)
-
-NAVI usa `simulatePurchase()` antes de confirmar gastos — retorna `PurchaseSimulation` con impacto en DRS diario/semanal.
-
-### Multi-moneda (`currency.ts`)
-
-Cada transacción preserva:
-
-```typescript
-amountOriginal   // nunca se sobrescribe
-currencyOriginal
-exchangeRate
-amountBase       // convertido a moneda base del viaje
-currencyBase
-```
+Not sent: traveler name, email, budget, messages, pocket balances.
 
 ---
 
-## 9. NAVI — Agente de IA Financiera
+## Security
 
-### Arquitectura
-
-```
-Usuario → NaviPanel → appStore.askNavi()
-                           │
-                    naviAgent.handle()  (client-side mock)
-                           │
-                    executeTool() × N
-                           │
-                    IndexedDB persist
-```
-
-**Server route alternativo:** `POST /api/navi` — para Azure OpenAI real (action: `ask` | `process` | `insight`).
-
-### Tools disponibles (`src/lib/agent/tools.ts`)
-
-| Tool | Descripción |
-|------|-------------|
-| `getTripContext` | Detalle del viaje activo |
-| `getCurrentBalance` | Balance total |
-| `getProtectedMoney` | Suma de pockets protegidos |
-| `getWeeklyBudget` | DRS semanal |
-| `getDailyBudget` | DRS diario |
-| `getMoneyRunway` | Proyección de agotamiento |
-| `getSpendingAnalysis` | Análisis de gastos |
-| `simulatePurchase` | Simular compra antes de gastar |
-| `createTransaction` | Registrar gasto |
-| `protectMoney` | Bloquear dinero en pocket |
-| `createGoal` | Crear meta de ahorro |
-| `convertCurrency` | Conversión de moneda |
-
-### Modo Mock vs. Azure
-
-```typescript
-// src/lib/ai/azureOpenAI.ts
-const isMock = () =>
-  process.env.MOCK_AI !== "false" && process.env.NEXT_PUBLIC_MOCK_AI !== "false";
-```
-
-Con `MOCK_AI=true` (default): heurísticas locales + tools del motor financiero.  
-Con `MOCK_AI=false`: requiere `AZURE_OPENAI_*` en servidor.
-
-### Regla de negocio NAVI
-
-> **"Can I afford this?"** siempre ejecuta `simulatePurchase` antes de crear transacción.
+- `QLOO_API_KEY` is read only in `src/lib/qloo/client.ts` (server). The client proxy does not echo it.
+- Azure keys stay in `/api/navi`, `/api/navi/speech`, `/api/navi/ocr`.
+- Confirm/Cancel is the only path from a recommendation to a stored expense.
+- Protected pockets stay locked through `simulatePurchase` and Confirm.
 
 ---
 
-## 10. Modelos de Datos y Tipado TypeScript
+## Demos
 
-Fuente canónica: `src/types/index.ts`
+Onboarding step 0:
 
-### Tipos primitivos y enums
+| Button | Trip id | Notes |
+| --- | --- | --- |
+| Try Medellín demo | `demo-trip-medellin` | Canned remaining days: 12 |
+| Try Singapore demo | `demo-trip-singapore` | Canned remaining days: 9 |
+| Try Chiang Mai demo | sample Chiang Mai | Still shipped; not the only entry |
 
-```typescript
-/** ISO 4217 currency code — open set for global travel */
-export type CurrencyCode = string;
-
-export type LocaleCode = "en" | "es" | "pt";
-
-export type HostBenefit =
-  | "accommodation"
-  | "breakfast"
-  | "lunch"
-  | "dinner"
-  | "laundry"
-  | "transport"
-  | "tours";
-
-export type TransactionSource = "text" | "voice" | "receipt" | "manual";
-
-export type PocketCategory =
-  | "emergency"
-  | "food"
-  | "transport"
-  | "fun"
-  | "return_flight"
-  | "debt"
-  | "savings"
-  | "custom";
-
-export type SpendingStatus = "on_track" | "careful" | "at_risk";
-
-export type NaviState = "idle" | "listening" | "thinking" | "success" | "error";
-```
-
-### Profile (equivalente a "User" — no hay interface `User`)
-
-```typescript
-export interface Profile {
-  id: string;
-  displayName: string;
-  locale: LocaleCode;
-  preferredCurrency: CurrencyCode;
-  onboardingComplete: boolean;
-  avatarHue?: number;
-  createdAt: string;
-  updatedAt: string;
-}
-```
-
-### Trip
-
-```typescript
-export interface Trip {
-  id: string;
-  destination: string;
-  city: string;
-  country: string;
-  countryCode: string;
-  flag: string;
-  baseCurrency: CurrencyCode;
-  localCurrency: CurrencyCode;
-  startDate: string;
-  endDate: string;
-  initialBudget: number;
-  hostName?: string;
-  includedBenefits: HostBenefit[];
-  createdAt: string;
-  updatedAt: string;
-}
-```
-
-### Pocket
-
-```typescript
-export interface Pocket {
-  id: string;
-  tripId: string;
-  name: string;
-  category: PocketCategory;
-  balance: number;
-  allocated: number;
-  protected: boolean;
-  icon: string;
-  createdAt: string;
-  updatedAt: string;
-}
-```
-
-### Transaction
-
-```typescript
-export interface Transaction {
-  id: string;
-  tripId: string;
-  pocketId?: string;
-  amountOriginal: number;
-  currencyOriginal: CurrencyCode;
-  exchangeRate: number;
-  amountBase: number;
-  currencyBase: CurrencyCode;
-  concept: string;
-  category: string;
-  source: TransactionSource;
-  createdAt: string;
-  note?: string;
-}
-```
-
-### Goal
-
-```typescript
-export interface Goal {
-  id: string;
-  tripId: string;
-  name: string;
-  targetAmount: number;
-  currentAmount: number;
-  currency: CurrencyCode;
-  protected: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-```
-
-### DestinationCountry (dominio geográfico)
-
-```typescript
-// src/lib/destinations.ts
-export interface DestinationCountry {
-  country: string;
-  code: string;
-  flag: string;
-  localCurrency: CurrencyCode;
-  cities: string[];
-  popular: boolean;
-  region: "americas" | "europe" | "asia-oceania" | "africa-me";
-}
-```
-
-### Tipos financieros derivados
-
-```typescript
-export interface BudgetSnapshot {
-  totalBalance: number;
-  protectedMoney: number;
-  realAvailable: number;
-  daysRemaining: number;
-  weeksRemaining: number;
-  dailySafeSpend: number;
-  weeklySafeSpend: number;
-  status: SpendingStatus;
-  spentTotal: number;
-  averageDailySpend: number;
-}
-
-export interface MoneyRunwayResult {
-  runwayDate: string;
-  daysRemaining: number;
-  tripEndDate: string;
-  daysEarly: number;
-  status: SpendingStatus;
-  message: string;
-}
-
-export interface PurchaseSimulation {
-  purchaseAmount: number;
-  purchaseCurrency: CurrencyCode;
-  purchaseAmountBase: number;
-  availableBefore: number;
-  availableAfter: number;
-  dailyBudgetBefore: number;
-  dailyBudgetAfter: number;
-  weeklyBudgetBefore: number;
-  weeklyBudgetAfter: number;
-  affordable: boolean;
-  impactMessage: string;
-  daysImpacted: number;
-}
-```
-
-### AgentMessage
-
-```typescript
-export interface AgentMessage {
-  id: string;
-  role: "user" | "assistant" | "system";
-  content: string;
-  timestamp: string;
-  toolCalls?: AgentToolCall[];
-  locale?: LocaleCode;
-}
-```
-
-### AppState (Zustand)
-
-```typescript
-export interface AppState {
-  profile: Profile | null;
-  trip: Trip | null;
-  pockets: Pocket[];
-  transactions: Transaction[];
-  goals: Goal[];
-  insights: AIInsight[];
-  hydrated: boolean;
-  offline: boolean;
-}
-```
+Any other destination from the picker is a real trip. Qloo is queried for that city when consent is on.
 
 ---
 
-## 11. Persistencia: IndexedDB y Sync Cloud
+## i18n and PWA
 
-### Schema IndexedDB
-
-Database: `voluntrip-ai` (version 1)
-
-| Store | Key | Índices |
-|-------|-----|---------|
-| `profile` | `id` | — |
-| `trips` | `id` | — |
-| `pockets` | `id` | `by-trip` → `tripId` |
-| `transactions` | `id` | `by-trip` → `tripId` |
-| `goals` | `id` | `by-trip` → `tripId` |
-| `insights` | `id` | `by-trip` → `tripId` |
-| `messages` | `id` | — |
-| `meta` | `key` | — |
-
-### Ciclo de hidratación
-
-```typescript
-// appStore.hydrate()
-profile  ← getProfile()
-trip     ← getActiveTrip()  // más reciente por updatedAt
-pockets, transactions, goals, insights ← by tripId
-messages ← getMessages() → naviAgent.memory.load()
-```
-
-### Reset de datos
-
-`clearAllData()` — disponible desde **My Trip → Reset local data**.
-
-### Sync cloud (stub)
-
-```typescript
-// src/lib/sync/supabaseSync.ts
-export function isCloudConfigured(): boolean {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
-}
-
-export async function pushLocalChanges() {
-  // Future: map IndexedDB stores → Supabase tables
-  return { ok: false, message: "Supabase sync adapter not connected yet." };
-}
-```
+- Locales: `en`, `es`, `pt` (`src/lib/i18n/dictionaries.ts`).
+- PWA: `public/manifest.webmanifest` (standalone, start `/app`), `public/sw.js`, `public/offline.html`, icons under `public/icons/`.
 
 ---
 
-## 12. Internacionalización (i18n)
+## What is not built
 
-Archivo: `src/lib/i18n/dictionaries.ts`
-
-| Locale | Estado |
-|--------|--------|
-| `en` | Completo |
-| `es` | Completo |
-| `pt` | Completo |
-
-Función helper:
-
-```typescript
-t(locale, "onboarding.welcome_sub") // → "Your money needs a compass."
-```
-
-Preparado para extensión: FR, DE, IT, NL, JA, ZH.
-
-La búsqueda de destinos incluye alias ES/PT independientes del locale UI (`destination-regions.ts`).
-
----
-
-## 13. Guía de Comandos y Variables de Entorno
-
-### Scripts npm
-
-| Comando | Descripción |
-|---------|-------------|
-| `npm install` | Instalar dependencias |
-| `npm run dev` | Servidor desarrollo con Turbopack (`localhost:3000`) |
-| `npm run build` | Build producción (+ `prebuild` → `destinations:build`) |
-| `npm run start` | Servidor producción post-build |
-| `npm run lint` | ESLint (Next.js) |
-| `npm test` | Vitest — tests motor financiero |
-| `npm run test:watch` | Vitest en modo watch |
-| `npm run icons` | Generar iconos PWA PNG |
-| `npm run destinations:build` | Regenerar `destinations-countries.json` |
-
-### Quick start
-
-```bash
-npm install
-npm run icons          # primera vez — genera iconos PWA
-npm run destinations:build  # opcional — ya corre en prebuild
-npm run dev
-```
-
-Abrir [http://localhost:3000](http://localhost:3000).
-
-### Variables de entorno (`.env.local`)
-
-Copiar desde `.env.example`:
-
-```bash
-cp .env.example .env.local
-```
-
-| Variable | Requerida | Propósito |
-|----------|-----------|-----------|
-| `MOCK_AI` | No (default `true`) | `true` = NAVI mock local; `false` = Azure OpenAI |
-| `AZURE_OPENAI_ENDPOINT` | Solo si `MOCK_AI=false` | Endpoint Azure OpenAI |
-| `AZURE_OPENAI_API_KEY` | Solo si `MOCK_AI=false` | **Solo servidor** — nunca en cliente |
-| `AZURE_OPENAI_DEPLOYMENT` | Solo si `MOCK_AI=false` | Nombre del deployment |
-| `NEXT_PUBLIC_SUPABASE_URL` | Opcional | URL proyecto Supabase |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Opcional | Clave anon Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | Opcional | **Solo servidor** |
-| `EXCHANGE_RATE_API_KEY` | Opcional | Tipos de cambio en vivo |
-| `NEXT_PUBLIC_APP_URL` | Opcional | URL pública (default `http://localhost:3000`) |
-
-> **Seguridad:** Nunca commitear `.env.local`. Nunca exponer `AZURE_OPENAI_API_KEY` ni `SUPABASE_SERVICE_ROLE_KEY` en código cliente.
-
----
-
-## 14. Decisiones Arquitectónicas y Notas Operativas
-
-### ¿Por qué JSON estático para destinos?
-
-- **Performance:** Import estático, sin fetch en runtime
-- **Offline:** Dataset disponible sin red desde el bundle
-- **Control:** Hubs curados priorizan ciudades relevantes para voluntarios
-- **Reproducibilidad:** `npm run destinations:build` regenera dataset idéntico
-
-### ¿Por qué IndexedDB y no Supabase directo?
-
-- Funciona sin cuenta ni internet inicial
-- Latencia cero para cálculos DRS
-- Supabase se añade como capa de backup/sync sin romper local-first
-
-### ¿Por qué Zustand y no Redux?
-
-- API mínima para estado global moderado
-- Sin boilerplate; integración directa con IndexedDB en actions
-
-### `createId()` — compatibilidad HTTP
-
-`crypto.randomUUID()` falla en contextos no seguros (ej. `192.168.x.x`).  
-Solución: `src/lib/id.ts` con fallback basado en timestamp + random.
-
-### Extensión futura recomendada
-
-1. Conectar Supabase sync (`pushLocalChanges` / `pullRemoteChanges`)
-2. Activar Azure OpenAI con Route Handler ya existente
-3. Añadir auth opcional (Supabase Auth)
-4. Expandir alias de búsqueda a más idiomas
-5. Service Worker: cachear `destinations-countries.json` explícitamente
-
----
-
-## Referencias rápidas de archivos
-
-| Concepto | Archivo |
-|----------|---------|
-| Tipos de dominio | `src/types/index.ts` |
-| Estado global | `src/store/appStore.ts` |
-| Persistencia local | `src/lib/db/indexeddb.ts` |
-| Motor DRS | `src/lib/finance/budget.ts` |
-| Agente NAVI | `src/lib/agent/agent.ts` |
-| Destinos (loader) | `src/lib/destinations.ts` |
-| Tabs + búsqueda | `src/lib/destination-regions.ts` |
-| Dataset generado | `src/lib/data/destinations-countries.json` |
-| Generador dataset | `scripts/build-destinations.js` |
-| Hubs curados | `scripts/volunteer-hubs.json` |
-| Picker UI | `src/components/onboarding/DestinationPicker.tsx` |
-| Onboarding | `src/components/onboarding/OnboardingFlow.tsx` |
-| PWA SW | `public/sw.js` |
-| API NAVI | `src/app/api/navi/route.ts` |
-| Sync stub | `src/lib/sync/supabaseSync.ts` |
-| i18n | `src/lib/i18n/dictionaries.ts` |
-
----
-
-*Documento generado a partir del análisis del código fuente de Voluntrip AI v0.1.0.*
+- Travel Buddy / group mode
+- Live FX (`EXCHANGE_RATE_API_KEY` is listed for later; rates today are the mock table)
+- Verified menu prices
+- Conversational NAVI without Azure OpenAI (local mode is heuristic + tools)
