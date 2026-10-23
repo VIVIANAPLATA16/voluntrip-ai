@@ -132,6 +132,14 @@ const dictionaries = {
     "navi.experience.from_qloo_loved":
       "From Qloo\nRanked by your loved entities\nRank: {rank}\nSource: {source}",
     "navi.purchase_confirmed": "Purchase confirmed: {amount} for \"{place}\"",
+    "navi.voice.qloo_rank":
+      "Qloo ranked {place} #{rank} of {total} for your taste in {taste}. Source: {source}.",
+    "navi.voice.qloo_loved":
+      "Qloo ranked {place} #{rank} of {total}. Ranked by your loved entities ({entities}). Source: {source}.",
+    "navi.voice.qloo_rank_plain":
+      "Qloo ranked {place} #{rank} of {total}. Source: {source}.",
+    "navi.voice.not_qloo":
+      "{place} is generic, not from Qloo ({source}).",
     "navi.experience.protected_yes": "yes",
     "navi.experience.protected_no": "no",
     "culture.title": "Cultural DNA",
@@ -587,6 +595,14 @@ const dictionaries = {
     "navi.experience.from_qloo_loved":
       "From Qloo\nOrdenado según lo que amas\nPuesto: {rank}\nSource: {source}",
     "navi.purchase_confirmed": "Compra confirmada: {amount} para \"{place}\"",
+    "navi.voice.qloo_rank":
+      "Qloo puso {place} en el #{rank} de {total} según tu gusto por {taste}. Source: {source}.",
+    "navi.voice.qloo_loved":
+      "Qloo puso {place} en el #{rank} de {total}. Ordenado según lo que amas ({entities}). Source: {source}.",
+    "navi.voice.qloo_rank_plain":
+      "Qloo puso {place} en el #{rank} de {total}. Source: {source}.",
+    "navi.voice.not_qloo":
+      "{place} es genérico, not from Qloo ({source}).",
     "navi.experience.protected_yes": "sí",
     "navi.experience.protected_no": "no",
     "culture.title": "Cultural DNA",
@@ -1041,6 +1057,14 @@ const dictionaries = {
     "navi.experience.from_qloo_loved":
       "From Qloo\nOrdenado conforme o que você ama\nPosição: {rank}\nSource: {source}",
     "navi.purchase_confirmed": "Compra confirmada: {amount} para \"{place}\"",
+    "navi.voice.qloo_rank":
+      "O Qloo colocou {place} na posição #{rank} de {total} pelo seu gosto por {taste}. Source: {source}.",
+    "navi.voice.qloo_loved":
+      "O Qloo colocou {place} na posição #{rank} de {total}. Ordenado conforme o que você ama ({entities}). Source: {source}.",
+    "navi.voice.qloo_rank_plain":
+      "O Qloo colocou {place} na posição #{rank} de {total}. Source: {source}.",
+    "navi.voice.not_qloo":
+      "{place} é genérico, not from Qloo ({source}).",
     "navi.experience.protected_yes": "sim",
     "navi.experience.protected_no": "não",
     "culture.title": "Cultural DNA",

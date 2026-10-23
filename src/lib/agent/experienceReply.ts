@@ -1,8 +1,8 @@
 import { formatMoney } from "@/lib/constants";
-import { GENERIC_BASELINE_LABEL } from "@/lib/experiences";
+import type { PurchaseSimulation } from "@/types";
 import type { Experience, StretchPlanResult } from "@/lib/experiences";
-import { matchedTagsKind } from "@/lib/experiences/whyThisDetails";
 import { t, type Locale } from "@/lib/i18n/dictionaries";
+import { naviQlooCite } from "./qlooVoice";
 import type { ToolResult } from "./tools";
 import type { ExperienceRecommendationPayload, NaviResponse } from "./types";
 
@@ -12,41 +12,31 @@ function estimatedCostLabel(locale: Locale, experience: Experience): string {
   });
 }
 
-function qlooSourceLabel(
-  experience: Experience,
-  payload: Pick<ExperienceRecommendationPayload, "usedBaseline" | "baselineLabel">
-): string {
-  return payload.usedBaseline || experience.whyQloo.source !== "qloo"
-    ? `${experience.whyQloo.source} (${payload.baselineLabel ?? GENERIC_BASELINE_LABEL})`
-    : experience.whyQloo.source;
-}
-
 function fromQlooBlock(
   locale: Locale,
   experience: Experience,
   payload: Pick<ExperienceRecommendationPayload, "usedBaseline" | "baselineLabel">
 ): string {
-  const source = qlooSourceLabel(experience, payload);
-  const kind = matchedTagsKind(experience.whyQloo);
-  if (kind === "loved_entities") {
-    return t(locale, "navi.experience.from_qloo_loved", {
-      rank: experience.whyQloo.rank,
-      source,
-    });
-  }
-  const tags =
-    kind === "tags"
-      ? experience.whyQloo.matchedTags.join(", ")
-      : t(locale, "navi.experience.no_matched_tags");
-  return t(locale, "navi.experience.from_qloo", {
-    tags,
-    rank: experience.whyQloo.rank,
-    source,
-  });
+  const cite = naviQlooCite(locale, experience, Boolean(payload.usedBaseline));
+  const header = t(locale, cite.showAsQloo ? "experience.from_qloo" : "experience.not_from_qloo");
+  return `${header}\n${cite.text}`;
 }
 
-function fromVoluntripBlock(locale: Locale, experience: Experience): string {
-  const protectedLabel = experience.whyVoluntrip.protectedMoneyUntouched
+function fromVoluntripBlock(
+  locale: Locale,
+  experience: Experience,
+  simulation?: PurchaseSimulation
+): string {
+  const dailyBefore = simulation
+    ? simulation.dailyBudgetBefore
+    : experience.whyVoluntrip.dailySafeSpendBefore;
+  const dailyAfter = simulation
+    ? simulation.dailyBudgetAfter
+    : experience.whyVoluntrip.dailySafeSpendAfter;
+  const protectedUntouched = simulation
+    ? simulation.affordable
+    : experience.whyVoluntrip.protectedMoneyUntouched;
+  const protectedLabel = protectedUntouched
     ? t(locale, "navi.experience.protected_yes")
     : t(locale, "navi.experience.protected_no");
   const runwayKey =
@@ -55,10 +45,12 @@ function fromVoluntripBlock(locale: Locale, experience: Experience): string {
       : experience.whyVoluntrip.runwayStatus === "at_risk"
         ? "status.at_risk"
         : "status.on_track";
+  const costAmount = simulation ? simulation.purchaseAmount : experience.estimatedCost.amount;
+  const costCurrency = simulation ? simulation.purchaseCurrency : "USD";
   return t(locale, "navi.experience.from_voluntrip", {
-    cost: formatMoney(experience.estimatedCost.amount, "USD", { showCode: true }),
-    dailyBefore: formatMoney(experience.whyVoluntrip.dailySafeSpendBefore, "USD"),
-    dailyAfter: formatMoney(experience.whyVoluntrip.dailySafeSpendAfter, "USD"),
+    cost: formatMoney(costAmount, costCurrency, { showCode: true }),
+    dailyBefore: formatMoney(dailyBefore, costCurrency),
+    dailyAfter: formatMoney(dailyAfter, costCurrency),
     protected: protectedLabel,
     runway: t(locale, runwayKey),
   });
@@ -151,18 +143,9 @@ export function formatStretchPlanReply(locale: Locale, plan: StretchPlanResult):
       : "",
     plan.bothUnaffordable ? t(locale, "stretch.unaffordable") : "",
     first
-      ? matchedTagsKind(first.whyQloo) === "loved_entities"
-        ? t(locale, "navi.experience.from_qloo_loved", {
-            rank: first.whyQloo.rank,
-            source: first.whyQloo.source,
-          })
-        : t(locale, "navi.experience.from_qloo", {
-            tags:
-              first.whyQloo.matchedTags.join(", ") ||
-              t(locale, "navi.experience.no_matched_tags"),
-            rank: first.whyQloo.rank,
-            source: first.whyQloo.source,
-          })
+      ? fromQlooBlock(locale, first, {
+          usedBaseline: first.whyQloo.source !== "qloo",
+        })
       : "",
     t(locale, "navi.experience.from_voluntrip", {
       cost: stretchedTotal,
@@ -202,7 +185,8 @@ export function applyStretchPlanToNaviResponse(
 export function formatExperienceToolReply(
   locale: Locale,
   tool: "recommendExperience" | "explainRecommendation" | "findBetterOption" | "planStretch",
-  result: ToolResult
+  result: ToolResult,
+  simulation?: PurchaseSimulation
 ): string {
   if (!result.ok) {
     return result.error || t(locale, "navi.experience.no_best");
@@ -237,15 +221,21 @@ export function formatExperienceToolReply(
     return [
       t(locale, "navi.experience.explain", { name: data.best.name }),
       fromQlooBlock(locale, data.best, payload),
-      fromVoluntripBlock(locale, data.best),
+      fromVoluntripBlock(locale, data.best, simulation),
     ].join("\n\n");
   }
 
   const data = result.data as { missing?: boolean; alternative: Experience | null };
   if (data.missing) return t(locale, "navi.experience.no_last");
   if (!data.alternative) return t(locale, "navi.experience.no_alternative");
-  return t(locale, "navi.experience.alternative", {
-    name: data.alternative.name,
-    cost: formatMoney(data.alternative.estimatedCost.amount, "USD", { showCode: true }),
-  });
+  return [
+    t(locale, "navi.experience.alternative", {
+      name: data.alternative.name,
+      cost: formatMoney(data.alternative.estimatedCost.amount, "USD", { showCode: true }),
+    }),
+    fromQlooBlock(locale, data.alternative, {
+      usedBaseline: data.alternative.whyQloo.source !== "qloo",
+    }),
+    fromVoluntripBlock(locale, data.alternative, simulation),
+  ].join("\n\n");
 }

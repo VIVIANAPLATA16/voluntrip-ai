@@ -5,7 +5,7 @@ import type { ExperienceRecommendationPayload, NaviResponse } from "./types";
 import { buildNaviResponse } from "./responseBuilder";
 import { applyStretchPlanToNaviResponse, formatExperienceToolReply } from "./experienceReply";
 import { parseStretchNightsFromText } from "@/lib/experiences";
-import type { StretchPlanResult } from "@/lib/experiences";
+import type { Experience, StretchPlanResult } from "@/lib/experiences";
 import { executeToolAsync, isCulturalTool } from "./experienceTools";
 import type { AgentContext, ToolName } from "./tools";
 import { executeTool, makeToolCall } from "./tools";
@@ -282,11 +282,36 @@ async function runCulturalAsk(
   }
 
   const result = await executeToolAsync(tool, args, ctx);
-  const executedTools = [{ name: tool, args, result }];
+  const executedTools: Array<{
+    name: ToolName;
+    args: Record<string, unknown>;
+    result: ReturnType<typeof executeTool>;
+  }> = [{ name: tool, args, result }];
+
+  let simulation: PurchaseSimulation | undefined;
+  if (result.ok && (tool === "explainRecommendation" || tool === "findBetterOption")) {
+    const data = result.data as { best?: Experience | null; alternative?: Experience | null };
+    const place = tool === "explainRecommendation" ? data.best : data.alternative;
+    if (place) {
+      const simResult = executeTool(
+        "simulatePurchase",
+        { amount: place.estimatedCost.amount, currency: "USD" },
+        ctx
+      );
+      executedTools.push({
+        name: "simulatePurchase",
+        args: { amount: place.estimatedCost.amount, currency: "USD" },
+        result: simResult,
+      });
+      if (simResult.ok) simulation = simResult.data as PurchaseSimulation;
+    }
+  }
+
   const content = formatExperienceToolReply(
     ctx.locale,
     tool as "recommendExperience" | "explainRecommendation" | "findBetterOption" | "planStretch",
-    result
+    result,
+    simulation
   );
 
   const response = buildNaviResponse({

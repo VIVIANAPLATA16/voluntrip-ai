@@ -6,6 +6,8 @@ import {
   extractPlaceFromWhatIf,
   formatConfirmedPurchaseMessage,
   formatExperiencePlaceLabel,
+  isWrittenConfirm,
+  purchaseConceptFromMessages,
   purchaseConceptFromUserText,
   sanitizePlaceLabel,
   whatIfSpendText,
@@ -88,6 +90,36 @@ describe("confirmed purchase label", () => {
     expect(input.concept).toBe(GENERIC_PURCHASE_LABEL);
     expect(input.amountOriginal).toBe(sim.purchaseAmount);
     expect(formatConfirmedPurchaseMessage("en", sim, input.concept)).toBeNull();
+  });
+
+  it("keeps Cafe at the Park as one place name", () => {
+    expect(extractPlaceFromWhatIf("What if I spend $12 at Cafe at the Park?")).toBe(
+      "Cafe at the Park"
+    );
+  });
+
+  it("finds the place on the current simulation after confirm or another question", () => {
+    const messages = [
+      { role: "user", content: "What if I spend $25 at Fonda La Chismosa - La 70?" },
+      { role: "assistant", content: "Here's the simulation." },
+      { role: "user", content: "why this?" },
+      { role: "assistant", content: "Why Fonda La Chismosa:" },
+      { role: "user", content: "confirm" },
+    ];
+    expect(purchaseConceptFromMessages(messages, sim)).toBe("Fonda La Chismosa - La 70");
+    expect(isWrittenConfirm("confirm")).toBe(true);
+    expect(isWrittenConfirm("Confirmar")).toBe(true);
+    expect(isWrittenConfirm("What if I spend $25?")).toBe(false);
+  });
+
+  it("uses the generic label when the current simulation had no place", () => {
+    const messages = [
+      { role: "user", content: "What if I spend $25 at El Social Salsa?" },
+      { role: "user", content: "What if I spend $40?" },
+    ];
+    expect(
+      purchaseConceptFromMessages(messages, { purchaseAmount: 40, purchaseCurrency: "USD" })
+    ).toBe(GENERIC_PURCHASE_LABEL);
   });
 
   it("does not change the simulated amounts", () => {
