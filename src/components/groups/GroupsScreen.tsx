@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { Lock, Users } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { t } from "@/lib/i18n/dictionaries";
@@ -14,6 +16,15 @@ import {
   readSharedGroup,
 } from "@/lib/groups/client";
 import { groupTagLabel, groupTasteOverlap } from "@/lib/groups/overlap";
+import {
+  applyShareResult,
+  cancelStopShare,
+  memberTasteStatus,
+  openStopShare,
+  overlapSectionEmptyKey,
+  sharingMemberCount,
+  tastePrivacyView,
+} from "@/lib/groups/privacy";
 import {
   createGroupFromUi,
   groupErrorText,
@@ -74,6 +85,8 @@ export function GroupsScreen() {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [confirmStopShare, setConfirmStopShare] = useState(false);
+  const [stoppedNotice, setStoppedNotice] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [groupName, setGroupName] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -217,45 +230,77 @@ export function GroupsScreen() {
     await refresh();
   }
 
-  async function onToggleShare() {
+  function privacySnapshot() {
+    return {
+      sharing: sharing,
+      confirmStop: confirmStopShare,
+      notice: stoppedNotice ? ("stopped" as const) : null,
+    };
+  }
+
+  function applyPrivacyUi(next: ReturnType<typeof applyShareResult>) {
+    setSharing(next.sharing);
+    setConfirmStopShare(next.confirmStop);
+    setStoppedNotice(next.notice === "stopped");
+  }
+
+  async function runShare(intent: "start" | "stop") {
     if (!group || !session) return;
     const me = group.members.find(function (member) {
       return member.id === session.memberId;
     });
-    const next = !sharing;
+    const prev = privacySnapshot();
     setBusy(true);
     setError(null);
     try {
       const result = await setGroupSharing({
-        sharing: next,
+        sharing: intent === "start",
         alias: me?.alias || displayName || group.name,
         profile: culturalProfile,
       });
       if (result.status !== "ok") {
+        applyPrivacyUi(applyShareResult(prev, intent, { ok: false }));
         showError(result.status);
         return;
       }
       const mine = result.group.members.find(function (member) {
         return member.id === session.memberId;
       });
-      if (next && result.sent.length === 0) {
-        const latest = await profileForShare(culturalProfile);
-        if (groupShareMissedLikes(latest)) {
+      if (intent === "start") {
+        let received = memberReceivedShare(result.sent, mine?.tags);
+        if (result.sent.length === 0) {
+          const latest = await profileForShare(culturalProfile);
+          if (groupShareMissedLikes(latest)) {
+            applyPrivacyUi(applyShareResult(prev, intent, { ok: true, tagsReceived: false }));
+            showError("invalid_tags");
+            return;
+          }
+          received = true;
+        }
+        const next = applyShareResult(prev, intent, { ok: true, tagsReceived: received });
+        applyPrivacyUi(next);
+        if (!next.sharing) {
           showError("invalid_tags");
           return;
         }
+        setGroup(result.group);
+        return;
       }
-      if (next && !memberReceivedShare(result.sent, mine?.tags)) {
+      const cleared = !(mine && mine.tags.length > 0);
+      const next = applyShareResult(prev, intent, { ok: true, tagsCleared: cleared });
+      applyPrivacyUi(next);
+      if (!cleared) {
         showError("invalid_tags");
         return;
       }
-      if (!next && mine && mine.tags.length > 0) {
-        showError("invalid_tags");
-        return;
-      }
-      setSharing(next);
       setGroup(result.group);
+      if (next.notice === "stopped") {
+        setTimeout(function () {
+          setStoppedNotice(false);
+        }, 2200);
+      }
     } catch {
+      applyPrivacyUi(applyShareResult(prev, intent, { ok: false }));
       showError("unavailable");
     } finally {
       setBusy(false);
@@ -297,6 +342,10 @@ export function GroupsScreen() {
   }
 
   const overlap = group ? groupTasteOverlap(group.members) : null;
+  const sharingCount = overlap ? sharingMemberCount(overlap.memberShares) : 0;
+  const privacy = tastePrivacyView(sharing);
+  const commonEmptyKey = overlap ? overlapSectionEmptyKey(overlap.common, sharingCount) : null;
+  const almostEmptyKey = overlap ? overlapSectionEmptyKey(overlap.almost, sharingCount) : null;
 
   return (
     <motion.div
@@ -427,18 +476,28 @@ export function GroupsScreen() {
             <h2 className="text-sm font-semibold text-ink">{t(locale, "groups.members")}</h2>
             <ul className="space-y-2">
               {overlap.memberShares.map(function (member) {
+                const status = memberTasteStatus(member);
                 const countKey =
                   member.sharedCount === 1 ? "groups.shared_one" : "groups.shared_count";
+                const statusKey =
+                  status === "private"
+                    ? "groups.privacy.not_sharing"
+                    : status === "no_match"
+                      ? "groups.privacy.no_matches"
+                      : countKey;
                 return (
                   <li key={member.id} className="min-w-0 space-y-2 break-words text-sm text-ink">
                     <div>
                       <span className="font-medium">{member.alias}</span>
                       <span className="text-ink-muted">
                         {" "}
-                        · {t(locale, countKey, { count: member.sharedCount })}
+                        ·{" "}
+                        {status === "matched"
+                          ? t(locale, statusKey, { count: member.sharedCount })
+                          : t(locale, statusKey)}
                       </span>
                     </div>
-                    <TagChips ids={member.tags} />
+                    {status === "matched" ? <TagChips ids={member.tags} /> : null}
                   </li>
                 );
               })}
@@ -447,36 +506,99 @@ export function GroupsScreen() {
 
           <section className="min-w-0 space-y-3 rounded-card border border-border bg-surface/80 p-4">
             <h2 className="text-sm font-semibold text-ink">{t(locale, "groups.in_common")}</h2>
-            {overlap.common.length === 0 ? (
-              <p className="text-sm text-ink-muted break-words">
-                {t(locale, "groups.empty_common")}
-              </p>
+            {commonEmptyKey ? (
+              <p className="text-sm text-ink-muted break-words">{t(locale, commonEmptyKey)}</p>
             ) : (
               <TagChips ids={overlap.common} />
             )}
             <h3 className="text-sm font-semibold text-ink">{t(locale, "groups.almost")}</h3>
-            {overlap.almost.length === 0 ? (
-              <p className="text-sm text-ink-muted break-words">
-                {t(locale, "groups.empty_common")}
-              </p>
+            {almostEmptyKey ? (
+              <p className="text-sm text-ink-muted break-words">{t(locale, almostEmptyKey)}</p>
             ) : (
               <TagChips ids={overlap.almost} />
             )}
           </section>
 
           <section className="min-w-0 space-y-3 rounded-card border border-border bg-surface/80 p-4">
-            <Button
-              variant={sharing ? "primary" : "secondary"}
-              aria-pressed={sharing}
-              className="min-h-10 h-auto w-full max-w-full whitespace-normal motion-reduce:transition-none"
-              disabled={busy}
-              onClick={function () {
-                void onToggleShare();
-              }}
-            >
-              {t(locale, "groups.share_toggle")}
-            </Button>
+            <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+              <h2 className="text-sm font-semibold text-ink break-words">
+                {t(locale, "groups.privacy.title")}
+              </h2>
+              <Badge variant={sharing ? "accent" : "default"} className="min-h-8 gap-1.5">
+                {sharing ? (
+                  <Users className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                ) : (
+                  <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                )}
+                {t(locale, privacy.statusKey)}
+              </Badge>
+            </div>
+            <p className="text-sm text-ink-muted break-words">{t(locale, privacy.bodyKey)}</p>
             <p className="text-xs text-ink-muted break-words">{t(locale, "groups.share_hint")}</p>
+            {stoppedNotice ? (
+              <p role="status" className="text-sm font-medium text-accent break-words">
+                {t(locale, "groups.privacy.stopped")}
+              </p>
+            ) : null}
+            {confirmStopShare ? (
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="groups-stop-share-title"
+                aria-describedby="groups-stop-share-body"
+                className="min-w-0 space-y-3 rounded-card border border-border bg-bg-elevated/70 p-4"
+              >
+                <h3
+                  id="groups-stop-share-title"
+                  className="text-sm font-semibold text-ink break-words"
+                >
+                  {t(locale, "groups.privacy.stop_title")}
+                </h3>
+                <p id="groups-stop-share-body" className="text-sm text-ink-muted break-words">
+                  {t(locale, "groups.privacy.stop_body")}
+                </p>
+                <div className="flex min-w-0 flex-wrap gap-2">
+                  <Button
+                    variant="secondary"
+                    className="min-h-10 motion-reduce:transition-none"
+                    disabled={busy}
+                    onClick={function () {
+                      const next = cancelStopShare(privacySnapshot());
+                      applyPrivacyUi(next);
+                    }}
+                  >
+                    {t(locale, "groups.privacy.stop_cancel")}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    className="min-h-10 motion-reduce:transition-none"
+                    disabled={busy}
+                    onClick={function () {
+                      void runShare("stop");
+                    }}
+                  >
+                    {t(locale, "groups.privacy.stop_confirm")}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                variant={privacy.action === "start" ? "primary" : "secondary"}
+                aria-pressed={sharing}
+                className="min-h-10 h-auto w-full max-w-full whitespace-normal motion-reduce:transition-none"
+                disabled={busy}
+                onClick={function () {
+                  if (privacy.action === "start") {
+                    void runShare("start");
+                    return;
+                  }
+                  const next = openStopShare(privacySnapshot());
+                  applyPrivacyUi(next);
+                }}
+              >
+                {t(locale, privacy.actionKey)}
+              </Button>
+            )}
           </section>
 
           {confirmLeave ? (

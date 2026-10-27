@@ -128,6 +128,22 @@ describe("group share client wrappers", () => {
     });
   });
 
+  it("does not change Qloo consent or delete personal Cultural DNA when stopping share", async () => {
+    const stored = profile({
+      consent: { granted: false, grantedAt: null },
+      music: [{ label: "rock", qlooTagId: ROCK }],
+    });
+    updateSharedGroupTastes.mockResolvedValue({
+      status: "ok",
+      group: { members: [{ id: "m", tags: [] }] },
+    });
+    await setGroupSharing({ sharing: false, alias: "Ana", profile: stored });
+    expect(stored.consent).toEqual({ granted: false, grantedAt: null });
+    expect(stored.music).toEqual([{ label: "rock", qlooTagId: ROCK }]);
+    expect(getCulturalProfile).not.toHaveBeenCalled();
+    expect(updateSharedGroupTastes.mock.calls[0][0].tags).toEqual([]);
+  });
+
   it("uses IndexedDB Cultural DNA when the store snapshot is empty", async () => {
     getCulturalProfile.mockResolvedValue(
       profile({ music: [{ label: "rock", qlooTagId: ROCK }] })

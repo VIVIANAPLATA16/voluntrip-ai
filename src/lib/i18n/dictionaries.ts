@@ -286,6 +286,23 @@ const dictionaries = {
     "groups.share_toggle": "Share my tastes with this group",
     "groups.share_hint":
       "This is separate from Qloo consent. It only shares your tagMap likes, not loved artists or films.",
+    "groups.privacy.title": "Your cultural tastes",
+    "groups.privacy.private": "Private",
+    "groups.privacy.private_body":
+      "Only you can see your cultural tastes. Group members cannot see them.",
+    "groups.privacy.sharing": "Sharing with the group",
+    "groups.privacy.sharing_body":
+      "Group members can see the cultural tastes you chose to share.",
+    "groups.privacy.share": "Share my tastes with the group",
+    "groups.privacy.stop": "Stop sharing my tastes",
+    "groups.privacy.stop_title": "Stop sharing your tastes?",
+    "groups.privacy.stop_body":
+      "Your tastes will stay saved in your profile, but they will no longer be visible to members of this group. You can share them again whenever you want.",
+    "groups.privacy.stop_cancel": "Cancel",
+    "groups.privacy.stop_confirm": "Yes, stop sharing",
+    "groups.privacy.stopped": "Your tastes are no longer shared with the group",
+    "groups.privacy.not_sharing": "Not sharing their tastes",
+    "groups.privacy.no_matches": "No matches yet",
     "groups.leave": "Leave group",
     "groups.leave_confirm": "Leave this group? Your member will be removed.",
     "groups.leave_yes": "Leave",
@@ -830,6 +847,23 @@ const dictionaries = {
     "groups.share_toggle": "Compartir mi gusto con este grupo",
     "groups.share_hint":
       "Esto es distinto del consentimiento para consultar Qloo. Solo comparte likes del tagMap, no artistas ni películas.",
+    "groups.privacy.title": "Tus gustos culturales",
+    "groups.privacy.private": "Privados",
+    "groups.privacy.private_body":
+      "Solo tú puedes ver tus gustos culturales. Los miembros del grupo no pueden verlos.",
+    "groups.privacy.sharing": "Compartiendo con el grupo",
+    "groups.privacy.sharing_body":
+      "Los miembros del grupo pueden ver los gustos culturales que has decidido compartir.",
+    "groups.privacy.share": "Compartir mis gustos con el grupo",
+    "groups.privacy.stop": "Dejar de compartir mis gustos",
+    "groups.privacy.stop_title": "¿Dejar de compartir tus gustos?",
+    "groups.privacy.stop_body":
+      "Tus gustos seguirán guardados en tu perfil, pero dejarán de mostrarse a los miembros de este grupo. Podrás volver a compartirlos cuando quieras.",
+    "groups.privacy.stop_cancel": "Cancelar",
+    "groups.privacy.stop_confirm": "Sí, dejar de compartir",
+    "groups.privacy.stopped": "Tus gustos ya no se comparten con el grupo",
+    "groups.privacy.not_sharing": "No comparte sus gustos",
+    "groups.privacy.no_matches": "Aún no hay coincidencias",
     "groups.leave": "Salir del grupo",
     "groups.leave_confirm": "¿Salir de este grupo? Se eliminará tu miembro.",
     "groups.leave_yes": "Salir",
@@ -1373,6 +1407,23 @@ const dictionaries = {
     "groups.share_toggle": "Compartilhar meu gosto com este grupo",
     "groups.share_hint":
       "Isto é distinto do consentimento para consultar o Qloo. Só compartilha likes do tagMap, não artistas nem filmes.",
+    "groups.privacy.title": "Seus gostos culturais",
+    "groups.privacy.private": "Privados",
+    "groups.privacy.private_body":
+      "Só você pode ver seus gostos culturais. Os membros do grupo não podem vê-los.",
+    "groups.privacy.sharing": "Compartilhando com o grupo",
+    "groups.privacy.sharing_body":
+      "Os membros do grupo podem ver os gostos culturais que você decidiu compartilhar.",
+    "groups.privacy.share": "Compartilhar meus gostos com o grupo",
+    "groups.privacy.stop": "Parar de compartilhar meus gostos",
+    "groups.privacy.stop_title": "Parar de compartilhar seus gostos?",
+    "groups.privacy.stop_body":
+      "Seus gostos continuarão salvos no seu perfil, mas deixarão de ser exibidos aos membros deste grupo. Você poderá compartilhá-los de novo quando quiser.",
+    "groups.privacy.stop_cancel": "Cancelar",
+    "groups.privacy.stop_confirm": "Sim, parar de compartilhar",
+    "groups.privacy.stopped": "Seus gostos não são mais compartilhados com o grupo",
+    "groups.privacy.not_sharing": "Não compartilha seus gostos",
+    "groups.privacy.no_matches": "Ainda não há interesses em comum",
     "groups.leave": "Sair do grupo",
     "groups.leave_confirm": "Sair deste grupo? Seu membro será removido.",
     "groups.leave_yes": "Sair",

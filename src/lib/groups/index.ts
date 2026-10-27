@@ -18,6 +18,15 @@ export {
   knownGroupTags,
 } from "./overlap";
 export {
+  applyShareResult,
+  cancelStopShare,
+  memberTasteStatus,
+  openStopShare,
+  overlapSectionEmptyKey,
+  sharingMemberCount,
+  tastePrivacyView,
+} from "./privacy";
+export {
   createGroupFromUi,
   groupErrorText,
   groupShareMissedLikes,
