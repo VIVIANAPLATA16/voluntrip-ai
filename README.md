@@ -39,9 +39,17 @@ Voluntrip AI launched for volunteers. The same daily safe, protected pockets, an
 
 ---
 
-## Potential impact
+## Vision and business potential
 
-Industry blogs estimate **40–45 million** digital nomads in 2026 ([Nomada, 2026](https://nomada.tools/blog/state-of-digital-nomadism-2026)); published figures vary by source. In our review of travel budget apps and AI trip planners, we did not find one that combines taste, remaining money, protected money, and a purchase simulation before spending. Whether that gap is a product opportunity is a hypothesis, not validated.
+Voluntrip AI starts with volunteers and grows to every long-stay traveler on a fixed budget. Industry blogs estimate 40–45 million digital nomads in 2026 ([Nomada, 2026](https://nomada.tools/blog/state-of-digital-nomadism-2026)); published figures vary by source. Volunteer-stay networks such as Worldpackers and Workaway already connect travelers with hosts around the world, and every one of those travelers has a budget to protect.
+
+**Where we are going.** Voluntrip becomes the layer between a traveler's taste and their wallet. In any city Qloo covers, every recommendation answers two questions at once: can I afford it, and is it worth it for me?
+
+**Roadmap (planned, not built yet):**
+- A freemium PWA. Daily safe spend, protected pockets and NAVI stay free; an annual plan unlocks Stretch plans, group planning and saved city guides.
+- Distribution through volunteer-stay and digital-nomad communities.
+- Partnerships with host and hostel networks. Rankings will always come from Qloo taste signals, never from paid placement.
+- Live exchange rates and more cities.
 
 ---
 
