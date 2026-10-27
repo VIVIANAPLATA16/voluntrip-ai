@@ -1,8 +1,10 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
+import { Heart } from "lucide-react";
 import type { CulturalProfile } from "@/types";
-import { t } from "@/lib/i18n/dictionaries";
+import { t, type Locale, type TranslationKey } from "@/lib/i18n/dictionaries";
 import { useAppStore } from "@/store/appStore";
 
 export const TASTE_PROFILE_PATH = "/app/profile";
@@ -67,6 +69,40 @@ export function buildTasteSummary(
   };
 }
 
+export function likesCountKey(count: number): TranslationKey {
+  return count === 1 ? "taste.summary.likes_one" : "taste.summary.likes_other";
+}
+
+export function tasteProfileAvatarProps(locale: Locale): {
+  href: typeof TASTE_PROFILE_PATH;
+  "aria-label": string;
+} {
+  return {
+    href: TASTE_PROFILE_PATH,
+    "aria-label": t(locale, "profile.taste_title"),
+  };
+}
+
+export function TasteProfileAvatarLink({ children }: { children: ReactNode }) {
+  const locale = useAppStore(function (s) {
+    return s.locale;
+  });
+  const props = tasteProfileAvatarProps(locale);
+  return (
+    <Link
+      href={props.href}
+      aria-label={props["aria-label"]}
+      className="relative inline-flex items-center justify-center min-h-11 min-w-11 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
+    >
+      {children}
+      <Heart
+        className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 text-accent fill-accent"
+        aria-hidden
+      />
+    </Link>
+  );
+}
+
 export function TasteSummaryCard() {
   const locale = useAppStore(function (s) {
     return s.locale;
@@ -93,7 +129,9 @@ export function TasteSummaryCard() {
           <p>
             {t(locale, "taste.summary.consent", { status: consentLabel })}
           </p>
-          <p>{t(locale, "taste.summary.likes", { count: summary.likeCount })}</p>
+          <p>
+            {t(locale, likesCountKey(summary.likeCount), { count: summary.likeCount })}
+          </p>
           {summary.entityNames.length > 0 ? (
             <p>
               {t(locale, "taste.summary.loves", {

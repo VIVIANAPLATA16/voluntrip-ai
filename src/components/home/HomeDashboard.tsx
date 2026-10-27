@@ -16,7 +16,10 @@ import Link from "next/link";
 import { generateInsight } from "@/lib/ai/azureOpenAI";
 import type { AIInsight } from "@/types";
 import { WifiOff } from "lucide-react";
-import { TasteSummaryCard } from "@/components/culture/TasteSummaryCard";
+import {
+  TasteProfileAvatarLink,
+  TasteSummaryCard,
+} from "@/components/culture/TasteSummaryCard";
 import { TonightMatch } from "@/components/experiences/TonightMatch";
 import { StretchPlanCard } from "@/components/experiences/StretchPlanCard";
 
@@ -81,7 +84,9 @@ export function HomeDashboard() {
           ) : (
             <Badge variant="success">{t(locale, "home.sync_ready")}</Badge>
           )}
-          <Avatar name={profile?.displayName || "V"} hue={profile?.avatarHue} />
+          <TasteProfileAvatarLink>
+            <Avatar name={profile?.displayName || "V"} hue={profile?.avatarHue} />
+          </TasteProfileAvatarLink>
         </div>
       </header>
 
