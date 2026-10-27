@@ -15,6 +15,7 @@ import { executeToolAsync, isCulturalTool } from "./experienceTools";
 import type { AgentContext, ToolName } from "./tools";
 import { executeTool, makeToolCall } from "./tools";
 import { simulationReply } from "./simulationReply";
+import { findGroupTravelBuddies, formatBuddyReply } from "@/lib/groups/buddy";
 
 export function parseAmountCurrency(text: string): { amount: number; currency: string } | null {
   const patterns = [
@@ -77,6 +78,7 @@ export type LocalAskIntent =
   | "alternative"
   | "stretch"
   | "myday"
+  | "buddy"
   | "unknown";
 
 export function detectLocalAskIntent(text: string): {
@@ -111,6 +113,14 @@ export function detectLocalAskIntent(text: string): {
     )
   ) {
     return { intent: "alternative", tools: ["findBetterOption"] };
+  }
+  if (
+    /travel[ -]?buddy|travel companion|find me a (travel )?buddy|compa[nñ]er[oa]s? de viaje|busca(r)? (un |una )?compa[nñ]er[oa]|algu[eé]m para viajar|encontre algu[eé]m|encontrar algu[eé]m|parceir[oa]s? de viagem|companheir[oa]s? de viagem/i.test(
+      lower
+    )
+  ) {
+    // Handled before mock/Azure in NaviAgent.ask. No Azure tool.
+    return { intent: "buddy", tools: [] };
   }
   if (
     /why this|why that|\bwhy\??$|por qu[eé]( esto| esta| eso)?|\bpor qu[eé]\b|porque (esto|essa)|por que (isso|esta)|explica(r)? (esto|isso|this)/i.test(
@@ -355,10 +365,28 @@ async function runCulturalAsk(
   return response;
 }
 
+/** Read-only group search. Used by mock and Azure paths; never invents people. */
+export async function answerTravelBuddyAsk(
+  userText: string,
+  locale: Locale
+): Promise<NaviResponse> {
+  const found = await findGroupTravelBuddies();
+  return buildNaviResponse({
+    userText,
+    assistantContent: formatBuddyReply(locale, found),
+    executedTools: [],
+    locale,
+  });
+}
+
 /** Local heuristic NAVI — fallback when MOCK_AI=true or Azure is unavailable. Not a full LLM. */
 export async function runLocalAsk(userText: string, ctx: AgentContext): Promise<NaviResponse> {
   const locale = ctx.locale;
   const { intent, tools } = detectIntent(userText);
+
+  if (intent === "buddy") {
+    return answerTravelBuddyAsk(userText, locale);
+  }
 
   if (intent === "unknown" || tools.length === 0) {
     return buildNaviResponse({

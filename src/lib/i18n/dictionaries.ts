@@ -75,6 +75,19 @@ const dictionaries = {
     "navi.quick_prompt.myday": "plan for today",
     "navi.mock_limitation":
       "This question needs NAVI with real AI (configure Azure OpenAI) to answer accurately. In demo mode I can only help with budget, expenses, purchases, and protecting money.",
+    "navi.buddy.no_group":
+      "You need a group first. Create or join one in Groups, then ask me again.",
+    "navi.buddy.unavailable":
+      "I could not reach your group, so I cannot look for a travel buddy right now.",
+    "navi.buddy.none_sharing":
+      "No one in this group is sharing cultural tastes yet. Share your invite code {code} so someone can join.",
+    "navi.buddy.no_match":
+      "No shared cultural tastes with other members yet. Share your invite code {code} if you want another person to join.",
+    "navi.buddy.matches_intro":
+      "In your current group, these members share cultural tastes with you:",
+    "navi.buddy.member": "{alias}: {tags}",
+    "navi.buddy.common": "In common: {tags}",
+    "navi.buddy.almost": "Almost in common: {tags}",
     "navi.goal": "Plan a goal",
     "navi.drs_response":
       "You can safely spend {daily} per day and {weekly} per week (DRS).",
@@ -639,6 +652,19 @@ const dictionaries = {
     "navi.quick_prompt.myday": "plan para hoy",
     "navi.mock_limitation":
       "Esta pregunta necesita conexión a NAVI con IA real (configura Azure OpenAI) para responderse con precisión. En modo demo solo puedo ayudarte con presupuesto, gastos, compras y proteger dinero.",
+    "navi.buddy.no_group":
+      "Primero necesitas un grupo. Crea o únete a uno en Groups y vuelve a preguntarme.",
+    "navi.buddy.unavailable":
+      "No pude consultar tu grupo, así que no puedo buscar un compañero de viaje ahora.",
+    "navi.buddy.none_sharing":
+      "Nadie en este grupo está compartiendo gustos culturales. Comparte el código {code} para que otra persona se una.",
+    "navi.buddy.no_match":
+      "Aún no hay gustos culturales en común con otros miembros. Comparte el código {code} si quieres que se una otra persona.",
+    "navi.buddy.matches_intro":
+      "En tu grupo actual, estos miembros comparten gustos culturales contigo:",
+    "navi.buddy.member": "{alias}: {tags}",
+    "navi.buddy.common": "En común: {tags}",
+    "navi.buddy.almost": "Casi en común: {tags}",
     "navi.goal": "Planear una meta",
     "navi.drs_response":
       "Puedes gastar con seguridad {daily} por día y {weekly} por semana (DRS).",
@@ -1202,6 +1228,19 @@ const dictionaries = {
     "navi.quick_prompt.myday": "plano para hoje",
     "navi.mock_limitation":
       "Esta pergunta precisa de conexão ao NAVI com IA real (configure Azure OpenAI) para ser respondida com precisão. No modo demo só posso ajudar com orçamento, gastos, compras e proteger dinheiro.",
+    "navi.buddy.no_group":
+      "Você precisa de um grupo primeiro. Crie ou entre em um em Groups e pergunte de novo.",
+    "navi.buddy.unavailable":
+      "Não consegui consultar seu grupo, então não posso procurar um parceiro de viagem agora.",
+    "navi.buddy.none_sharing":
+      "Ninguém neste grupo está compartilhando gostos culturais. Compartilhe o código {code} para outra pessoa entrar.",
+    "navi.buddy.no_match":
+      "Ainda não há gostos culturais em comum com outros membros. Compartilhe o código {code} se quiser que outra pessoa entre.",
+    "navi.buddy.matches_intro":
+      "No seu grupo atual, estes membros compartilham gostos culturais com você:",
+    "navi.buddy.member": "{alias}: {tags}",
+    "navi.buddy.common": "Em comum: {tags}",
+    "navi.buddy.almost": "Quase em comum: {tags}",
     "navi.goal": "Planejar uma meta",
     "navi.drs_response":
       "Você pode gastar com segurança {daily} por dia e {weekly} por semana (DRS).",

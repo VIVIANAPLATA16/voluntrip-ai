@@ -18,6 +18,11 @@ export {
   knownGroupTags,
 } from "./overlap";
 export {
+  findGroupTravelBuddies,
+  formatBuddyReply,
+  type GroupBuddyResult,
+} from "./buddy";
+export {
   applyShareResult,
   cancelStopShare,
   GROUPS_TASTE_PROFILE_HREF,

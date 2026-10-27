@@ -1,6 +1,6 @@
 import type { AgentMessage } from "@/types";
 import { createId } from "@/lib/id";
-import { runLocalAsk } from "./localAsk";
+import { answerTravelBuddyAsk, detectLocalAskIntent, runLocalAsk } from "./localAsk";
 import { buildConnectionErrorResponse } from "./responseBuilder";
 import type { AgentContext } from "./tools";
 import { AgentMemory } from "./memory";
@@ -35,6 +35,20 @@ export class NaviAgent {
       ...ctx,
       lastRecommendation: ctx.lastRecommendation ?? this.lastRecommendation,
     };
+
+    if (detectLocalAskIntent(userText).intent === "buddy") {
+      try {
+        const result = await answerTravelBuddyAsk(userText, locale);
+        this.rememberRecommendation(result);
+        this.memory.add(result.message);
+        return result;
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : undefined;
+        const errorResponse = buildConnectionErrorResponse(locale, detail);
+        this.memory.add(errorResponse.message);
+        return errorResponse;
+      }
+    }
 
     if (shouldUseRemoteNavi()) {
       return this.askRemote(userText, ctxWithSession, locale);

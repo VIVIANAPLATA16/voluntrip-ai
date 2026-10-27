@@ -1,5 +1,18 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import type { Trip } from "@/types";
+import { t } from "@/lib/i18n/dictionaries";
+
+const { findGroupTravelBuddies } = vi.hoisted(function () {
+  return { findGroupTravelBuddies: vi.fn() };
+});
+
+vi.mock("@/lib/groups/buddy", async function () {
+  const actual = await vi.importActual<typeof import("@/lib/groups/buddy")>(
+    "@/lib/groups/buddy"
+  );
+  return { ...actual, findGroupTravelBuddies };
+});
+
 import { NaviAgent } from "./agent";
 
 const trip: Trip = {
@@ -34,6 +47,8 @@ describe("NaviAgent remote mode", () => {
   const originalMockFlag = process.env.NEXT_PUBLIC_MOCK_AI;
 
   beforeEach(() => {
+    findGroupTravelBuddies.mockReset();
+    findGroupTravelBuddies.mockResolvedValue({ kind: "no_group" });
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -119,5 +134,118 @@ describe("NaviAgent remote mode", () => {
 
     expect(result.message.content).toMatch(/couldn't connect|conectar/i);
     expect(result.mutations).toEqual([]);
+  });
+
+  it("does not send Qloo or finance prompts to Azure for a better-option request when buddy is not detected", async () => {
+    process.env.NEXT_PUBLIC_MOCK_AI = "false";
+    const agent = new NaviAgent();
+    await agent.ask("find me a better option", {
+      trip,
+      pockets: [],
+      transactions: [],
+      goals: [],
+      locale: "en",
+    });
+    expect(findGroupTravelBuddies).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("NaviAgent travel buddy intercept", () => {
+  const originalMockFlag = process.env.NEXT_PUBLIC_MOCK_AI;
+  const askCtx = {
+    trip,
+    pockets: [],
+    transactions: [],
+    goals: [],
+    locale: "en" as const,
+  };
+
+  beforeEach(function () {
+    findGroupTravelBuddies.mockReset();
+    findGroupTravelBuddies.mockResolvedValue({ kind: "no_group" });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: async () => mockNaviResponse,
+      })
+    );
+  });
+
+  afterEach(function () {
+    process.env.NEXT_PUBLIC_MOCK_AI = originalMockFlag;
+    vi.unstubAllGlobals();
+  });
+
+  it("answers buddy from the group search before mock or Azure, including when Azure is enabled", async () => {
+    findGroupTravelBuddies.mockResolvedValue({
+      kind: "matches",
+      code: "ABCD2345",
+      members: [{ alias: "Ana", tags: ["urn:tag:genre:music:rock"] }],
+      common: ["urn:tag:genre:music:rock"],
+      almost: [],
+    });
+
+    for (const flag of ["true", "false"]) {
+      process.env.NEXT_PUBLIC_MOCK_AI = flag;
+      findGroupTravelBuddies.mockClear();
+      vi.mocked(fetch).mockClear();
+
+      const agent = new NaviAgent();
+      const result = await agent.ask("Find me a travel buddy", askCtx);
+
+      expect(findGroupTravelBuddies).toHaveBeenCalledOnce();
+      expect(fetch).not.toHaveBeenCalled();
+      expect(result.message.content).toContain("Ana");
+      expect(result.message.content).toMatch(/rock/i);
+      expect(result.message.content).not.toBe("Remote NAVI reply");
+      expect(result.message.content).not.toMatch(/available today|secret|memberId/i);
+      expect(agent.memory.all().map(function (message) {
+        return message.role;
+      })).toEqual(["user", "assistant"]);
+    }
+  });
+
+  it("keeps honest empty states and locale when Azure would otherwise be used", async () => {
+    process.env.NEXT_PUBLIC_MOCK_AI = "false";
+    const agent = new NaviAgent();
+    const none = await agent.ask("Find me a travel buddy", askCtx);
+    expect(none.message.content).toBe(t("en", "navi.buddy.no_group"));
+    expect(fetch).not.toHaveBeenCalled();
+
+    findGroupTravelBuddies.mockResolvedValue({
+      kind: "none_sharing",
+      code: "ABCD2345",
+    });
+    const spanish = await agent.ask("Busca un compañero de viaje", {
+      ...askCtx,
+      locale: "es",
+    });
+    expect(spanish.message.content).toBe(
+      t("es", "navi.buddy.none_sharing", { code: "ABCD2345" })
+    );
+    expect(spanish.message.locale).toBe("es");
+  });
+
+  it("returns NAVI's connection error if the group search throws", async () => {
+    process.env.NEXT_PUBLIC_MOCK_AI = "false";
+    findGroupTravelBuddies.mockRejectedValue(new Error("IndexedDB blocked"));
+    const agent = new NaviAgent();
+    const result = await agent.ask("Find me a travel buddy", askCtx);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(result.message.content).toMatch(/couldn't connect|conectar/i);
+    expect(result.mutations).toEqual([]);
+  });
+
+  it("leaves budget questions on the original mock or Azure path", async () => {
+    process.env.NEXT_PUBLIC_MOCK_AI = "false";
+    const agent = new NaviAgent();
+    const remote = await agent.ask("How much can I spend today?", askCtx);
+    expect(findGroupTravelBuddies).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(remote.message.content).toBe("Remote NAVI reply");
   });
 });
