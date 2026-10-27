@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useAppStore } from "@/store/appStore";
-import { Avatar } from "@/components/ui/Avatar";
 import { Logo } from "@/components/ui/Logo";
 import { HeroFinancialCard } from "@/components/finance/HeroFinancialCard";
 import { TripProgress } from "@/components/ui/TripProgress";
@@ -11,21 +10,32 @@ import { InsightCard } from "@/components/ui/InsightCard";
 import { PocketCard } from "@/components/ui/PocketCard";
 import { TransactionItem } from "@/components/ui/TransactionItem";
 import { Badge } from "@/components/ui/Badge";
-import { t } from "@/lib/i18n/dictionaries";
+import { t, type Locale } from "@/lib/i18n/dictionaries";
 import Link from "next/link";
 import { generateInsight } from "@/lib/ai/azureOpenAI";
 import type { AIInsight } from "@/types";
-import { WifiOff } from "lucide-react";
+import { Heart, WifiOff } from "lucide-react";
 import {
-  TasteProfileAvatarLink,
   TasteSummaryCard,
+  tasteProfileAvatarProps,
 } from "@/components/culture/TasteSummaryCard";
 import { TonightMatch } from "@/components/experiences/TonightMatch";
 import { StretchPlanCard } from "@/components/experiences/StretchPlanCard";
 
+/** Header Taste-profile control: centered heart, no initial, no corner badge. */
+export function tasteHeaderAvatar(locale: Locale) {
+  const props = tasteProfileAvatarProps(locale);
+  return {
+    href: props.href,
+    "aria-label": props["aria-label"],
+    initial: null,
+    icon: "heart" as const,
+    iconAriaHidden: true,
+  };
+}
+
 export function HomeDashboard() {
   const trip = useAppStore((s) => s.trip);
-  const profile = useAppStore((s) => s.profile);
   const pockets = useAppStore((s) => s.pockets);
   const transactions = useAppStore((s) => s.transactions);
   const insights = useAppStore((s) => s.insights);
@@ -70,6 +80,7 @@ export function HomeDashboard() {
   if (!trip || !snapshot || !runway) return null;
 
   const displayInsight = liveInsight || insights[0];
+  const profileLink = tasteHeaderAvatar(locale);
 
   return (
     <div className="min-w-0 max-w-full space-y-5 pb-4 overflow-x-hidden">
@@ -84,9 +95,18 @@ export function HomeDashboard() {
           ) : (
             <Badge variant="success">{t(locale, "home.sync_ready")}</Badge>
           )}
-          <TasteProfileAvatarLink>
-            <Avatar name={profile?.displayName || "V"} hue={profile?.avatarHue} />
-          </TasteProfileAvatarLink>
+          <Link
+            href={profileLink.href}
+            aria-label={profileLink["aria-label"]}
+            className="inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
+          >
+            <span
+              aria-hidden
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-accent/15"
+            >
+              <Heart className="h-5 w-5 text-accent fill-accent" aria-hidden />
+            </span>
+          </Link>
         </div>
       </header>
 
