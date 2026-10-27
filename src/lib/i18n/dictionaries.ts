@@ -442,6 +442,7 @@ const dictionaries = {
     "home.destination": "Destination",
     "home.see_all": "See all",
     "home.no_activity_yet": "No activity yet",
+    "home.no_trip_yet": "No trip yet. Complete onboarding or load the demo.",
     "navi.tagline": "Your AI financial compass",
     "navi.empty_state_hint":
       "Ask anything about your trip money. Try voice or a quick action.",
@@ -1021,6 +1022,7 @@ const dictionaries = {
     "home.destination": "Destino",
     "home.see_all": "Ver todo",
     "home.no_activity_yet": "Sin actividad aún",
+    "home.no_trip_yet": "Aún no hay viaje. Completa la configuración o carga la demo.",
     "navi.tagline": "Tu brújula financiera con IA",
     "navi.empty_state_hint":
       "Pregunta lo que quieras sobre el dinero de tu viaje. Prueba voz o una acción rápida.",
@@ -1599,6 +1601,7 @@ const dictionaries = {
     "home.destination": "Destino",
     "home.see_all": "Ver tudo",
     "home.no_activity_yet": "Sem atividade ainda",
+    "home.no_trip_yet": "Ainda não há viagem. Conclua a configuração ou carregue a demo.",
     "navi.tagline": "Sua bússola financeira com IA",
     "navi.empty_state_hint":
       "Pergunte o que quiser sobre o dinheiro da viagem. Tente voz ou uma ação rápida.",
