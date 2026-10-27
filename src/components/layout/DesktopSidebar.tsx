@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   Compass,
+  Heart,
   LayoutDashboard,
   Map,
   Sparkles,
@@ -16,6 +17,7 @@ import { t, type Locale } from "@/lib/i18n/dictionaries";
 
 const links = [
   { href: "/app", icon: LayoutDashboard, key: "nav.dashboard" as const },
+  { href: "/app/profile", icon: Heart, key: "nav.profile" as const },
   { href: "/app/pockets", icon: Wallet, key: "nav.pockets" as const },
   { href: "/app/activity", icon: Compass, key: "nav.activity" as const },
   { href: "/app/trip", icon: Map, key: "nav.trip" as const },
@@ -44,7 +46,7 @@ export function DesktopSidebar({ locale = "en" }: { locale?: Locale }) {
               key={link.href}
               href={link.href}
               className={cn(
-                "flex items-center gap-3 h-11 px-3 rounded-xl text-sm font-medium transition-colors",
+                "flex items-center gap-3 min-h-10 h-11 px-3 rounded-xl text-sm font-medium transition-colors motion-reduce:transition-none",
                 active
                   ? "bg-accent-soft text-accent"
                   : "text-ink-muted hover:text-ink hover:bg-surface"
