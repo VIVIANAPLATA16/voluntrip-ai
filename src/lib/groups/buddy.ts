@@ -12,6 +12,7 @@ export type GroupBuddyResult =
   | { kind: "no_group" }
   | { kind: "unavailable" }
   | { kind: "none_sharing"; code: string }
+  | { kind: "only_self"; code: string }
   | { kind: "no_match"; code: string }
   | {
       kind: "matches";
@@ -68,6 +69,9 @@ export async function findGroupTravelBuddies(
     });
 
     if (candidates.length === 0) {
+      if (selfTags.length > 0) {
+        return { kind: "only_self", code: result.group.code };
+      }
       return { kind: "none_sharing", code: result.group.code };
     }
 
@@ -99,6 +103,9 @@ export function formatBuddyReply(locale: Locale, found: GroupBuddyResult): strin
   if (found.kind === "unavailable") return t(locale, "navi.buddy.unavailable");
   if (found.kind === "none_sharing") {
     return t(locale, "navi.buddy.none_sharing", { code: found.code });
+  }
+  if (found.kind === "only_self") {
+    return t(locale, "navi.buddy.only_self", { code: found.code });
   }
   if (found.kind === "no_match") {
     return t(locale, "navi.buddy.no_match", { code: found.code });

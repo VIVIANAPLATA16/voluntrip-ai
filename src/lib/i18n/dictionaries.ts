@@ -80,9 +80,11 @@ const dictionaries = {
     "navi.buddy.unavailable":
       "I could not reach your group, so I cannot look for a travel buddy right now.",
     "navi.buddy.none_sharing":
-      "No one in this group is sharing cultural tastes yet. Share your invite code {code} so someone can join.",
+      "No one in this group is sharing cultural tastes yet, including you. Share your invite code {code} so someone can join.",
+    "navi.buddy.only_self":
+      "Your cultural tastes are shared with this group, but no other member is sharing theirs yet. Share your invite code {code} so someone else can join.",
     "navi.buddy.no_match":
-      "No shared cultural tastes with other members yet. Share your invite code {code} if you want another person to join.",
+      "Other members are sharing cultural tastes, but none overlap with yours. Share your invite code {code} if you want another person to join.",
     "navi.buddy.matches_intro":
       "In your current group, these members share cultural tastes with you:",
     "navi.buddy.member": "{alias}: {tags}",
@@ -657,9 +659,11 @@ const dictionaries = {
     "navi.buddy.unavailable":
       "No pude consultar tu grupo, así que no puedo buscar un compañero de viaje ahora.",
     "navi.buddy.none_sharing":
-      "Nadie en este grupo está compartiendo gustos culturales. Comparte el código {code} para que otra persona se una.",
+      "Nadie en este grupo está compartiendo gustos culturales, ni siquiera tú. Comparte el código {code} para que otra persona se una.",
+    "navi.buddy.only_self":
+      "Tus gustos culturales están compartidos con este grupo, pero todavía no hay otro miembro compartiendo los suyos. Comparte el código {code} para que otra persona se una.",
     "navi.buddy.no_match":
-      "Aún no hay gustos culturales en común con otros miembros. Comparte el código {code} si quieres que se una otra persona.",
+      "Hay miembros compartiendo gustos culturales, pero no coinciden con los tuyos. Comparte el código {code} si quieres que se una otra persona.",
     "navi.buddy.matches_intro":
       "En tu grupo actual, estos miembros comparten gustos culturales contigo:",
     "navi.buddy.member": "{alias}: {tags}",
@@ -1233,9 +1237,11 @@ const dictionaries = {
     "navi.buddy.unavailable":
       "Não consegui consultar seu grupo, então não posso procurar um parceiro de viagem agora.",
     "navi.buddy.none_sharing":
-      "Ninguém neste grupo está compartilhando gostos culturais. Compartilhe o código {code} para outra pessoa entrar.",
+      "Ninguém neste grupo está compartilhando gostos culturais, nem você. Compartilhe o código {code} para outra pessoa entrar.",
+    "navi.buddy.only_self":
+      "Seus gostos culturais estão compartilhados com este grupo, mas ainda não há outro membro compartilhando os dele. Compartilhe o código {code} para outra pessoa entrar.",
     "navi.buddy.no_match":
-      "Ainda não há gostos culturais em comum com outros membros. Compartilhe o código {code} se quiser que outra pessoa entre.",
+      "Há membros compartilhando gostos culturais, mas nenhum coincide com os seus. Compartilhe o código {code} se quiser que outra pessoa entre.",
     "navi.buddy.matches_intro":
       "No seu grupo atual, estes membros compartilham gostos culturais com você:",
     "navi.buddy.member": "{alias}: {tags}",

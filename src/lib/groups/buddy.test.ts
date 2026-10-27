@@ -82,23 +82,50 @@ describe("findGroupTravelBuddies", () => {
     assertPrivate(text);
   });
 
-  it("does not treat a private member as a candidate", async () => {
+  it("says nobody is sharing when the current user also has no tags", async () => {
     const found = await findGroupTravelBuddies(
       deps({
         members: [
-          member(SELF_ID, "Viv", [ROCK]),
+          member(SELF_ID, "Viv", []),
           member(BO_ID, "Bo", []),
         ],
       })
     );
     expect(found).toEqual({ kind: "none_sharing", code: "ABCD2345" });
-    const text = formatBuddyReply("en", found);
-    expect(text).toContain("ABCD2345");
-    expect(text).not.toContain("Bo");
+    const text = formatBuddyReply("es", found);
+    expect(text).toBe(t("es", "navi.buddy.none_sharing", { code: "ABCD2345" }));
+    expect(text).toMatch(/ni siquiera tú/i);
     assertPrivate(text);
   });
 
-  it("does not claim a match when shared tags do not overlap", async () => {
+  it("says only the current member is sharing when nobody else shared tags", async () => {
+    const found = await findGroupTravelBuddies(
+      deps({
+        members: [
+          member(SELF_ID, "Viv", [ROCK, COLOMBIANA]),
+          member(BO_ID, "Bo", []),
+        ],
+      })
+    );
+    expect(found).toEqual({ kind: "only_self", code: "ABCD2345" });
+    expect(
+      await findGroupTravelBuddies(deps({ members: [member(SELF_ID, "Viajera 1", [ROCK])] }))
+    ).toEqual({ kind: "only_self", code: "ABCD2345" });
+    const en = formatBuddyReply("en", found);
+    const es = formatBuddyReply("es", found);
+    const pt = formatBuddyReply("pt", found);
+    expect(en).toBe(t("en", "navi.buddy.only_self", { code: "ABCD2345" }));
+    expect(es).toBe(t("es", "navi.buddy.only_self", { code: "ABCD2345" }));
+    expect(pt).toBe(t("pt", "navi.buddy.only_self", { code: "ABCD2345" }));
+    expect(en).not.toMatch(/no one in this group is sharing/i);
+    expect(es).not.toMatch(/nadie en este grupo está compartiendo gustos culturales, ni siquiera tú/i);
+    expect(en).not.toContain("Bo");
+    assertPrivate(en);
+    assertPrivate(es);
+    assertPrivate(pt);
+  });
+
+  it("does not claim a match when other members share tastes that do not overlap", async () => {
     const found = await findGroupTravelBuddies(
       deps({
         members: [
@@ -109,7 +136,8 @@ describe("findGroupTravelBuddies", () => {
     );
     expect(found).toEqual({ kind: "no_match", code: "ABCD2345" });
     const text = formatBuddyReply("pt", found);
-    expect(text).toContain("ABCD2345");
+    expect(text).toBe(t("pt", "navi.buddy.no_match", { code: "ABCD2345" }));
+    expect(text).toMatch(/há membros compartilhando/i);
     expect(text).not.toMatch(/Ana/i);
     assertPrivate(text);
   });
@@ -143,6 +171,12 @@ describe("findGroupTravelBuddies", () => {
       assertPrivate(formatBuddyReply(locale, { kind: "no_group" }));
       assertPrivate(
         formatBuddyReply(locale, { kind: "none_sharing", code: "ABCD2345" })
+      );
+      assertPrivate(
+        formatBuddyReply(locale, { kind: "only_self", code: "ABCD2345" })
+      );
+      assertPrivate(
+        formatBuddyReply(locale, { kind: "no_match", code: "ABCD2345" })
       );
       assertPrivate(
         formatBuddyReply(locale, {
