@@ -1,14 +1,23 @@
 import { describe, expect, it } from "vitest";
+import { TASTE_PROFILE_PATH } from "@/components/culture/TasteSummaryCard";
 import { t, type Locale } from "@/lib/i18n/dictionaries";
+import { groupTasteOverlap } from "./overlap";
 import {
   applyShareResult,
   cancelStopShare,
+  GROUPS_TASTE_PROFILE_HREF,
+  memberTasteChipsVisible,
+  memberTasteListItem,
   memberTasteStatus,
   openStopShare,
   overlapSectionEmptyKey,
   sharingMemberCount,
   tastePrivacyView,
+  tasteProfileSetup,
 } from "./privacy";
+
+const ROCK = "urn:tag:genre:music:rock";
+const JAPANESE = "urn:tag:genre:place:restaurant:japanese";
 
 const LOCALES: Locale[] = ["en", "es", "pt"];
 
@@ -27,6 +36,8 @@ const PRIVACY_KEYS = [
   "groups.privacy.stopped",
   "groups.privacy.not_sharing",
   "groups.privacy.no_matches",
+  "groups.privacy.setup_body",
+  "groups.privacy.setup",
 ] as const;
 
 describe("taste privacy copy", () => {
@@ -68,6 +79,9 @@ describe("taste privacy copy", () => {
     expect(t("es", "groups.privacy.not_sharing")).toBe("No comparte sus gustos");
     expect(t("en", "groups.privacy.not_sharing")).toBe("Not sharing their tastes");
     expect(t("pt", "groups.privacy.no_matches")).toBe("Ainda não há interesses em comum");
+    expect(t("es", "groups.privacy.setup")).toBe("Configurar mis gustos culturales");
+    expect(t("en", "groups.privacy.setup")).toBe("Set up my cultural tastes");
+    expect(t("pt", "groups.privacy.setup")).toBe("Configurar meus gostos culturais");
   });
 });
 
@@ -119,18 +133,74 @@ describe("privacy confirmations and errors", () => {
 describe("member and overlap empty states", () => {
   it("distinguishes private members from sharing members with no matches", () => {
     expect(memberTasteStatus({ tags: [], sharedCount: 0 })).toBe("private");
-    expect(memberTasteStatus({ tags: ["urn:tag:genre:music:rock"], sharedCount: 0 })).toBe(
-      "no_match"
-    );
-    expect(memberTasteStatus({ tags: ["urn:tag:genre:music:rock"], sharedCount: 1 })).toBe(
-      "matched"
-    );
+    expect(memberTasteStatus({ tags: [ROCK], sharedCount: 0 })).toBe("no_match");
+    expect(memberTasteStatus({ tags: [ROCK], sharedCount: 1 })).toBe("matched");
+  });
+
+  it("hides chips for private members and shows shared tags even without overlap", () => {
+    expect(memberTasteChipsVisible([])).toBe(false);
+    expect(memberTasteListItem({ tags: [], sharedCount: 0 })).toEqual({
+      status: "private",
+      statusKey: "groups.privacy.not_sharing",
+      showChips: false,
+    });
+    expect(memberTasteListItem({ tags: [ROCK], sharedCount: 0 })).toEqual({
+      status: "no_match",
+      statusKey: "groups.privacy.no_matches",
+      showChips: true,
+    });
+    expect(memberTasteListItem({ tags: [ROCK], sharedCount: 1 })).toEqual({
+      status: "matched",
+      statusKey: "groups.shared_one",
+      showChips: true,
+    });
+    expect(memberTasteListItem({ tags: [ROCK, JAPANESE], sharedCount: 2 })).toEqual({
+      status: "matched",
+      statusKey: "groups.shared_count",
+      showChips: true,
+    });
+    expect(t("es", "groups.privacy.not_sharing")).not.toBe(t("es", "groups.privacy.no_matches"));
+    expect(t("en", "groups.privacy.not_sharing")).not.toBe(t("en", "groups.privacy.no_matches"));
+    expect(t("pt", "groups.privacy.not_sharing")).not.toBe(t("pt", "groups.privacy.no_matches"));
+  });
+
+  it("keeps En común empty while still listing a member's shared tags", () => {
+    const overlap = groupTasteOverlap([
+      { id: "a", alias: "Ana", tags: [ROCK] },
+      { id: "b", alias: "Bo", tags: [] },
+    ]);
+    expect(overlap.common).toEqual([]);
+    expect(overlap.almost).toEqual([]);
+    expect(memberTasteListItem(overlap.memberShares[0]).showChips).toBe(true);
+    expect(memberTasteListItem(overlap.memberShares[1]).showChips).toBe(false);
+    expect(
+      overlapSectionEmptyKey(overlap.common, sharingMemberCount(overlap.memberShares))
+    ).toBe("groups.privacy.no_matches");
   });
 
   it("does not show the empty-common copy when a section already has matches", () => {
-    expect(overlapSectionEmptyKey(["urn:tag:genre:music:rock"], 2)).toBeNull();
+    expect(overlapSectionEmptyKey([ROCK], 2)).toBeNull();
     expect(overlapSectionEmptyKey([], 0)).toBe("groups.empty_common");
     expect(overlapSectionEmptyKey([], 1)).toBe("groups.privacy.no_matches");
     expect(sharingMemberCount([{ tags: [] }, { tags: ["x"] }])).toBe(1);
+  });
+});
+
+describe("taste profile setup link", () => {
+  it("links to /app/profile when there are no shareable tastes and does not change sharing", () => {
+    const empty = tasteProfileSetup(0);
+    expect(empty.show).toBe(true);
+    expect(empty.href).toBe("/app/profile");
+    expect(empty.href).toBe(TASTE_PROFILE_PATH);
+    expect(empty.href).toBe(GROUPS_TASTE_PROFILE_HREF);
+    expect(empty.bodyKey).toBe("groups.privacy.setup_body");
+    expect(empty.actionKey).toBe("groups.privacy.setup");
+    expect(tastePrivacyView(false).action).toBe("start");
+    expect(tastePrivacyView(true).action).toBe("stop");
+  });
+
+  it("hides the profile setup link when the local profile already has shareable tastes", () => {
+    expect(tasteProfileSetup(1).show).toBe(false);
+    expect(tasteProfileSetup(3).href).toBe(TASTE_PROFILE_PATH);
   });
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { Lock, Users } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
@@ -19,11 +20,12 @@ import { groupTagLabel, groupTasteOverlap } from "@/lib/groups/overlap";
 import {
   applyShareResult,
   cancelStopShare,
-  memberTasteStatus,
+  memberTasteListItem,
   openStopShare,
   overlapSectionEmptyKey,
   sharingMemberCount,
   tastePrivacyView,
+  tasteProfileSetup,
 } from "@/lib/groups/privacy";
 import {
   createGroupFromUi,
@@ -344,6 +346,7 @@ export function GroupsScreen() {
   const overlap = group ? groupTasteOverlap(group.members) : null;
   const sharingCount = overlap ? sharingMemberCount(overlap.memberShares) : 0;
   const privacy = tastePrivacyView(sharing);
+  const setup = tasteProfileSetup(groupShareTags(culturalProfile).length);
   const commonEmptyKey = overlap ? overlapSectionEmptyKey(overlap.common, sharingCount) : null;
   const almostEmptyKey = overlap ? overlapSectionEmptyKey(overlap.almost, sharingCount) : null;
 
@@ -476,15 +479,7 @@ export function GroupsScreen() {
             <h2 className="text-sm font-semibold text-ink">{t(locale, "groups.members")}</h2>
             <ul className="space-y-2">
               {overlap.memberShares.map(function (member) {
-                const status = memberTasteStatus(member);
-                const countKey =
-                  member.sharedCount === 1 ? "groups.shared_one" : "groups.shared_count";
-                const statusKey =
-                  status === "private"
-                    ? "groups.privacy.not_sharing"
-                    : status === "no_match"
-                      ? "groups.privacy.no_matches"
-                      : countKey;
+                const item = memberTasteListItem(member);
                 return (
                   <li key={member.id} className="min-w-0 space-y-2 break-words text-sm text-ink">
                     <div>
@@ -492,12 +487,12 @@ export function GroupsScreen() {
                       <span className="text-ink-muted">
                         {" "}
                         ·{" "}
-                        {status === "matched"
-                          ? t(locale, statusKey, { count: member.sharedCount })
-                          : t(locale, statusKey)}
+                        {item.status === "matched"
+                          ? t(locale, item.statusKey, { count: member.sharedCount })
+                          : t(locale, item.statusKey)}
                       </span>
                     </div>
-                    {status === "matched" ? <TagChips ids={member.tags} /> : null}
+                    {item.showChips ? <TagChips ids={member.tags} /> : null}
                   </li>
                 );
               })}
@@ -534,6 +529,17 @@ export function GroupsScreen() {
               </Badge>
             </div>
             <p className="text-sm text-ink-muted break-words">{t(locale, privacy.bodyKey)}</p>
+            {setup.show ? (
+              <div className="min-w-0 space-y-2">
+                <p className="text-sm text-ink-muted break-words">{t(locale, setup.bodyKey)}</p>
+                <Link
+                  href={setup.href}
+                  className="inline-flex min-h-10 h-auto w-full max-w-full items-center justify-center whitespace-normal rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-bg touch-target break-words motion-reduce:transition-none"
+                >
+                  {t(locale, setup.actionKey)}
+                </Link>
+              </div>
+            ) : null}
             <p className="text-xs text-ink-muted break-words">{t(locale, "groups.share_hint")}</p>
             {stoppedNotice ? (
               <p role="status" className="text-sm font-medium text-accent break-words">

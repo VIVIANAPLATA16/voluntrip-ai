@@ -42,6 +42,58 @@ export function memberTasteStatus(member: {
   return "matched";
 }
 
+/** Shared tagMap ids are visible whenever the member sent any. Overlap is separate. */
+export function memberTasteChipsVisible(tags: readonly string[]): boolean {
+  return tags.length > 0;
+}
+
+export function memberTasteStatusKey(
+  status: MemberTasteStatus,
+  sharedCount: number
+): TranslationKey {
+  if (status === "private") return "groups.privacy.not_sharing";
+  if (status === "no_match") return "groups.privacy.no_matches";
+  return sharedCount === 1 ? "groups.shared_one" : "groups.shared_count";
+}
+
+export type MemberTasteListItem = {
+  status: MemberTasteStatus;
+  statusKey: TranslationKey;
+  showChips: boolean;
+};
+
+export function memberTasteListItem(member: {
+  tags: readonly string[];
+  sharedCount: number;
+}): MemberTasteListItem {
+  const status = memberTasteStatus(member);
+  return {
+    status,
+    statusKey: memberTasteStatusKey(status, member.sharedCount),
+    showChips: memberTasteChipsVisible(member.tags),
+  };
+}
+
+export const GROUPS_TASTE_PROFILE_HREF = "/app/profile" as const;
+
+/**
+ * Empty Cultural DNA is a setup gap, not a privacy change.
+ * Never toggles sharing or builds a share payload.
+ */
+export function tasteProfileSetup(shareableTagCount: number): {
+  show: boolean;
+  href: typeof GROUPS_TASTE_PROFILE_HREF;
+  bodyKey: TranslationKey;
+  actionKey: TranslationKey;
+} {
+  return {
+    show: shareableTagCount === 0,
+    href: GROUPS_TASTE_PROFILE_HREF,
+    bodyKey: "groups.privacy.setup_body",
+    actionKey: "groups.privacy.setup",
+  };
+}
+
 export function sharingMemberCount(members: readonly { tags: readonly string[] }[]): number {
   return members.filter(function (member) {
     return member.tags.length > 0;

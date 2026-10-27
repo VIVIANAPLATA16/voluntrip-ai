@@ -303,6 +303,9 @@ const dictionaries = {
     "groups.privacy.stopped": "Your tastes are no longer shared with the group",
     "groups.privacy.not_sharing": "Not sharing their tastes",
     "groups.privacy.no_matches": "No matches yet",
+    "groups.privacy.setup_body":
+      "You have not selected cultural tastes yet. Add them in your profile to share them with this group.",
+    "groups.privacy.setup": "Set up my cultural tastes",
     "groups.leave": "Leave group",
     "groups.leave_confirm": "Leave this group? Your member will be removed.",
     "groups.leave_yes": "Leave",
@@ -864,6 +867,9 @@ const dictionaries = {
     "groups.privacy.stopped": "Tus gustos ya no se comparten con el grupo",
     "groups.privacy.not_sharing": "No comparte sus gustos",
     "groups.privacy.no_matches": "Aún no hay coincidencias",
+    "groups.privacy.setup_body":
+      "Todavía no has seleccionado gustos culturales. Configúralos en tu perfil para compartirlos con este grupo.",
+    "groups.privacy.setup": "Configurar mis gustos culturales",
     "groups.leave": "Salir del grupo",
     "groups.leave_confirm": "¿Salir de este grupo? Se eliminará tu miembro.",
     "groups.leave_yes": "Salir",
@@ -1424,6 +1430,9 @@ const dictionaries = {
     "groups.privacy.stopped": "Seus gostos não são mais compartilhados com o grupo",
     "groups.privacy.not_sharing": "Não compartilha seus gostos",
     "groups.privacy.no_matches": "Ainda não há interesses em comum",
+    "groups.privacy.setup_body":
+      "Você ainda não selecionou gostos culturais. Configure-os no seu perfil para compartilhá-los com este grupo.",
+    "groups.privacy.setup": "Configurar meus gostos culturais",
     "groups.leave": "Sair do grupo",
     "groups.leave_confirm": "Sair deste grupo? Seu membro será removido.",
     "groups.leave_yes": "Sair",

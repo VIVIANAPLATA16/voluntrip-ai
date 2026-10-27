@@ -20,11 +20,16 @@ export {
 export {
   applyShareResult,
   cancelStopShare,
+  GROUPS_TASTE_PROFILE_HREF,
+  memberTasteChipsVisible,
+  memberTasteListItem,
   memberTasteStatus,
+  memberTasteStatusKey,
   openStopShare,
   overlapSectionEmptyKey,
   sharingMemberCount,
   tastePrivacyView,
+  tasteProfileSetup,
 } from "./privacy";
 export {
   createGroupFromUi,
