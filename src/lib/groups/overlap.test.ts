@@ -67,6 +67,20 @@ describe("groupTasteOverlap", () => {
     })?.sharedCount).toBe(1);
   });
 
+  it("keeps each member's known tags even when nobody else overlaps yet", () => {
+    const result = groupTasteOverlap([
+      { id: "a", alias: "A", tags: [T1, T3] },
+      { id: "b", alias: "B", tags: [] },
+    ]);
+    expect(result.common).toEqual([]);
+    expect(result.memberShares.find(function (row) {
+      return row.id === "a";
+    })?.tags.sort()).toEqual([T1, T3].sort());
+    expect(result.memberShares.find(function (row) {
+      return row.id === "b";
+    })?.tags).toEqual([]);
+  });
+
   it("returns empty overlap when nobody shares", () => {
     const result = groupTasteOverlap([
       { id: "a", alias: "A", tags: [T1] },

@@ -80,6 +80,7 @@ export type GroupMemberShare = {
   id: string;
   alias: string;
   sharedCount: number;
+  tags: string[];
 };
 
 export type GroupTasteOverlap = {
@@ -133,7 +134,7 @@ export function groupTasteOverlap(
         if ((counts.get(tag) ?? 0) >= 2) sharedCount += 1;
       }
     }
-    return { id: member.id, alias: member.alias, sharedCount };
+    return { id: member.id, alias: member.alias, sharedCount, tags: member.tags };
   });
 
   return { common, almost, memberShares };

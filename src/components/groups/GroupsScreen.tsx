@@ -17,8 +17,12 @@ import { groupTagLabel, groupTasteOverlap } from "@/lib/groups/overlap";
 import {
   createGroupFromUi,
   groupErrorText,
+  groupShareMissedLikes,
+  groupShareTags,
   groupsGate,
   joinGroupFromUi,
+  memberReceivedShare,
+  profileForShare,
   setGroupSharing,
 } from "@/lib/groups/share";
 import { validateAlias, validateGroupCode } from "@/lib/groups/validate";
@@ -84,39 +88,60 @@ export function GroupsScreen() {
   }, []);
 
   const refresh = useCallback(async function () {
-    const gate = groupsGate({ cloud: isCloudConfigured(), offline });
-    if (gate !== "ok") {
-      setView(gate);
-      return;
-    }
-    setView("loading");
-    const stored = await loadGroupSession();
-    setSession(stored);
-    if (!stored) {
-      setGroup(null);
-      setView("idle");
-      return;
-    }
-    const result = await readSharedGroup();
-    if (result.status !== "ok") {
-      if (result.status === "not_found") {
-        await clearGroupSession();
+    try {
+      const gate = groupsGate({ cloud: isCloudConfigured(), offline });
+      if (gate !== "ok") {
+        setView(gate);
+        return;
+      }
+      setView("loading");
+      const stored = await loadGroupSession();
+      setSession(stored);
+      if (!stored) {
         setGroup(null);
-        setSession(null);
         setView("idle");
         return;
       }
-      showError(result.status);
+      const result = await readSharedGroup();
+      if (result.status !== "ok") {
+        if (result.status === "not_found") {
+          await clearGroupSession();
+          setGroup(null);
+          setSession(null);
+          setView("idle");
+          return;
+        }
+        showError(result.status);
+        setView("idle");
+        return;
+      }
+      setGroup(result.group);
+      const me = result.group.members.find(function (member) {
+        return member.id === stored.memberId;
+      });
+      const isSharing = Boolean(me && me.tags.length > 0);
+      setSharing(isSharing);
+      setView("ready");
+      if (!isSharing || !me) return;
+      const latest = await profileForShare(culturalProfile);
+      if (groupShareTags(latest).length === 0) return;
+      const synced = await setGroupSharing({
+        sharing: true,
+        alias: me.alias,
+        profile: latest,
+      });
+      if (synced.status !== "ok" || !synced.group) return;
+      const mine = synced.group.members.find(function (member) {
+        return member.id === stored.memberId;
+      });
+      if (memberReceivedShare(synced.sent, mine?.tags)) {
+        setGroup(synced.group);
+      }
+    } catch {
+      showError("unavailable");
       setView("idle");
-      return;
     }
-    setGroup(result.group);
-    const me = result.group.members.find(function (member) {
-      return member.id === stored.memberId;
-    });
-    setSharing(Boolean(me && me.tags.length > 0));
-    setView("ready");
-  }, [offline, showError]);
+  }, [culturalProfile, offline, showError]);
 
   useEffect(function () {
     void refresh();
@@ -135,16 +160,22 @@ export function GroupsScreen() {
     }
     setBusy(true);
     setError(null);
-    const result = await createGroupFromUi({
-      groupName: name.alias,
-      displayName: alias.alias,
-      sharing: false,
-      profile: culturalProfile,
-    });
-    setBusy(false);
-    if (result.status !== "ok") {
-      showError(result.status);
+    try {
+      const result = await createGroupFromUi({
+        groupName: name.alias,
+        displayName: alias.alias,
+        sharing: false,
+        profile: culturalProfile,
+      });
+      if (result.status !== "ok") {
+        showError(result.status);
+        return;
+      }
+    } catch {
+      showError("unavailable");
       return;
+    } finally {
+      setBusy(false);
     }
     setGroupName("");
     setDisplayName("");
@@ -164,16 +195,22 @@ export function GroupsScreen() {
     }
     setBusy(true);
     setError(null);
-    const result = await joinGroupFromUi({
-      code: parsedCode.code,
-      displayName: alias.alias,
-      sharing: false,
-      profile: culturalProfile,
-    });
-    setBusy(false);
-    if (result.status !== "ok") {
-      showError(result.status);
+    try {
+      const result = await joinGroupFromUi({
+        code: parsedCode.code,
+        displayName: alias.alias,
+        sharing: false,
+        profile: culturalProfile,
+      });
+      if (result.status !== "ok") {
+        showError(result.status);
+        return;
+      }
+    } catch {
+      showError("unavailable");
       return;
+    } finally {
+      setBusy(false);
     }
     setCode("");
     setDisplayName("");
@@ -188,28 +225,57 @@ export function GroupsScreen() {
     const next = !sharing;
     setBusy(true);
     setError(null);
-    const result = await setGroupSharing({
-      sharing: next,
-      alias: me?.alias || displayName || group.name,
-      profile: culturalProfile,
-    });
-    setBusy(false);
-    if (result.status !== "ok") {
-      showError(result.status);
-      return;
+    try {
+      const result = await setGroupSharing({
+        sharing: next,
+        alias: me?.alias || displayName || group.name,
+        profile: culturalProfile,
+      });
+      if (result.status !== "ok") {
+        showError(result.status);
+        return;
+      }
+      const mine = result.group.members.find(function (member) {
+        return member.id === session.memberId;
+      });
+      if (next && result.sent.length === 0) {
+        const latest = await profileForShare(culturalProfile);
+        if (groupShareMissedLikes(latest)) {
+          showError("invalid_tags");
+          return;
+        }
+      }
+      if (next && !memberReceivedShare(result.sent, mine?.tags)) {
+        showError("invalid_tags");
+        return;
+      }
+      if (!next && mine && mine.tags.length > 0) {
+        showError("invalid_tags");
+        return;
+      }
+      setSharing(next);
+      setGroup(result.group);
+    } catch {
+      showError("unavailable");
+    } finally {
+      setBusy(false);
     }
-    setSharing(next);
-    if (result.group) setGroup(result.group);
   }
 
   async function onLeave() {
     setBusy(true);
     setError(null);
-    const result = await leaveSharedGroup();
-    setBusy(false);
-    if (result.status !== "ok" && result.status !== "not_found") {
-      showError(result.status);
+    try {
+      const result = await leaveSharedGroup();
+      if (result.status !== "ok" && result.status !== "not_found") {
+        showError(result.status);
+        return;
+      }
+    } catch {
+      showError("unavailable");
       return;
+    } finally {
+      setBusy(false);
     }
     setConfirmLeave(false);
     setGroup(null);
@@ -364,12 +430,15 @@ export function GroupsScreen() {
                 const countKey =
                   member.sharedCount === 1 ? "groups.shared_one" : "groups.shared_count";
                 return (
-                  <li key={member.id} className="min-w-0 break-words text-sm text-ink">
-                    <span className="font-medium">{member.alias}</span>
-                    <span className="text-ink-muted">
-                      {" "}
-                      · {t(locale, countKey, { count: member.sharedCount })}
-                    </span>
+                  <li key={member.id} className="min-w-0 space-y-2 break-words text-sm text-ink">
+                    <div>
+                      <span className="font-medium">{member.alias}</span>
+                      <span className="text-ink-muted">
+                        {" "}
+                        · {t(locale, countKey, { count: member.sharedCount })}
+                      </span>
+                    </div>
+                    <TagChips ids={member.tags} />
                   </li>
                 );
               })}

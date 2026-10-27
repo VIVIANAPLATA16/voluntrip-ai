@@ -20,10 +20,13 @@ export {
 export {
   createGroupFromUi,
   groupErrorText,
+  groupShareMissedLikes,
   groupSharePayload,
   groupShareTags,
   groupsGate,
   joinGroupFromUi,
+  memberReceivedShare,
+  profileForShare,
   setGroupSharing,
 } from "./share";
 export {

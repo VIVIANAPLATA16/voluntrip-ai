@@ -1,30 +1,39 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CulturalProfile } from "@/types";
 
-const { createSharedGroup, joinSharedGroup, updateSharedGroupTastes } = vi.hoisted(
-  function () {
+const { createSharedGroup, joinSharedGroup, updateSharedGroupTastes, getCulturalProfile } =
+  vi.hoisted(function () {
     return {
       createSharedGroup: vi.fn(),
       joinSharedGroup: vi.fn(),
       updateSharedGroupTastes: vi.fn(),
+      getCulturalProfile: vi.fn(),
     };
-  }
-);
+  });
 
 vi.mock("./client", function () {
   return { createSharedGroup, joinSharedGroup, updateSharedGroupTastes };
 });
 
+vi.mock("@/lib/culture/profile", function () {
+  return { getCulturalProfile };
+});
+
 import {
   createGroupFromUi,
   groupErrorText,
+  groupShareMissedLikes,
   groupSharePayload,
   groupShareTags,
   groupStatusMessageKey,
+  memberReceivedShare,
+  profileForShare,
   setGroupSharing,
 } from "./share";
 
 const SALSA = "urn:tag:genre:music:salsa";
+const ROCK = "urn:tag:genre:music:rock";
+const COLOMBIANA = "urn:tag:genre:place:restaurant:colombian";
 const UNKNOWN = "urn:tag:genre:music:invented";
 
 function profile(partial: Partial<CulturalProfile> = {}): CulturalProfile {
@@ -66,6 +75,37 @@ describe("group share payload", () => {
     expect(groupSharePayload(true, profile()).entities).toEqual([]);
     expect(groupSharePayload(true, profile()).tags).not.toContain("Bad Bunny");
   });
+
+  it("shares Cultural DNA signals without Qloo consent, including rock and colombiana", () => {
+    const tags = groupShareTags(
+      profile({
+        consent: { granted: false, grantedAt: null },
+        music: [{ label: "rock", qlooTagId: ROCK }],
+        food: [{ label: "colombiana", qlooTagId: COLOMBIANA }],
+      })
+    );
+    expect(tags.sort()).toEqual([COLOMBIANA, ROCK].sort());
+    expect(groupShareMissedLikes(profile({ music: [{ label: "rock", qlooTagId: ROCK }] }))).toBe(
+      false
+    );
+  });
+
+  it("resolves catalog labels when qlooTagId is missing", () => {
+    const tags = groupShareTags(
+      profile({
+        music: [{ label: "Rock" }],
+        food: [{ label: "colombiana" }],
+      })
+    );
+    expect(tags.sort()).toEqual([COLOMBIANA, ROCK].sort());
+  });
+
+  it("sends no tags and does not invent likes when the profile is empty", () => {
+    expect(groupShareTags(profile({ music: [], food: [], entertainment: [], activities: [] }))).toEqual(
+      []
+    );
+    expect(groupShareMissedLikes(profile({ music: [{ label: "not-a-catalog-like" }] }))).toBe(true);
+  });
 });
 
 describe("group share client wrappers", () => {
@@ -73,11 +113,66 @@ describe("group share client wrappers", () => {
     createSharedGroup.mockReset();
     joinSharedGroup.mockReset();
     updateSharedGroupTastes.mockReset();
+    getCulturalProfile.mockReset();
+    getCulturalProfile.mockResolvedValue(null);
   });
 
   it("clears tastes when sharing is turned off", async () => {
     updateSharedGroupTastes.mockResolvedValue({ status: "ok", group: { members: [] } });
     await setGroupSharing({ sharing: false, alias: "Ana", profile: profile() });
+    expect(updateSharedGroupTastes).toHaveBeenCalledWith({
+      consentGranted: true,
+      alias: "Ana",
+      tags: [],
+      entities: [],
+    });
+  });
+
+  it("uses IndexedDB Cultural DNA when the store snapshot is empty", async () => {
+    getCulturalProfile.mockResolvedValue(
+      profile({ music: [{ label: "rock", qlooTagId: ROCK }] })
+    );
+    expect(groupShareTags(await profileForShare(null))).toEqual([ROCK]);
+  });
+
+  it("loads Cultural DNA from IndexedDB when the in-memory profile is empty", async () => {
+    getCulturalProfile.mockResolvedValue(
+      profile({
+        music: [{ label: "rock", qlooTagId: ROCK }],
+        food: [{ label: "colombiana", qlooTagId: COLOMBIANA }],
+      })
+    );
+    updateSharedGroupTastes.mockResolvedValue({
+      status: "ok",
+      group: { members: [{ id: "m", tags: [ROCK, COLOMBIANA] }] },
+    });
+    const result = await setGroupSharing({
+      sharing: true,
+      alias: "Ana",
+      profile: null,
+    });
+    expect(updateSharedGroupTastes).toHaveBeenCalledWith({
+      consentGranted: true,
+      alias: "Ana",
+      tags: expect.arrayContaining([ROCK, COLOMBIANA]),
+      entities: [],
+    });
+    expect(result.sent.sort()).toEqual([COLOMBIANA, ROCK].sort());
+    expect(
+      memberReceivedShare(result.sent, [ROCK, COLOMBIANA])
+    ).toBe(true);
+  });
+
+  it("does not treat an empty update as a successful share of Cultural DNA", () => {
+    expect(memberReceivedShare([ROCK, COLOMBIANA], [])).toBe(false);
+    expect(memberReceivedShare([ROCK], [ROCK])).toBe(true);
+    expect(memberReceivedShare([], [])).toBe(true);
+  });
+
+  it("keeps sharing off from sending IndexedDB tastes", async () => {
+    getCulturalProfile.mockResolvedValue(profile({ music: [{ label: "rock", qlooTagId: ROCK }] }));
+    updateSharedGroupTastes.mockResolvedValue({ status: "ok", group: { members: [] } });
+    await setGroupSharing({ sharing: false, alias: "Ana", profile: null });
     expect(updateSharedGroupTastes).toHaveBeenCalledWith({
       consentGranted: true,
       alias: "Ana",
