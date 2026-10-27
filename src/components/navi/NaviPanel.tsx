@@ -9,9 +9,11 @@ import { t, type TranslationKey } from "@/lib/i18n/dictionaries";
 import type { NaviState } from "@/types";
 import { formatMoney } from "@/lib/constants";
 import { Camera, Mic, Send } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { blobToAzureWav } from "@/lib/audio/wavEncode";
 import { parseNaviBold } from "@/lib/agent/naviText";
+import { NAVI_PROFILE_HREF, naviMessageAction } from "@/lib/agent/types";
 import { naviAgent } from "@/lib/agent/agent";
 import { matchingDayPlanConcept } from "@/lib/agent/myDayPlan";
 import {
@@ -405,22 +407,32 @@ export function NaviPanel() {
           <div
             key={m.id}
             className={cn(
-              "max-w-[90%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed",
+              "max-w-[90%] min-w-0 rounded-2xl px-4 py-3 text-sm leading-relaxed",
               m.role === "user"
                 ? "ml-auto bg-accent text-bg"
                 : "mr-auto bg-surface border border-border text-ink"
             )}
           >
-            {parseNaviBold(m.content).map(function (part, index) {
-              if (part.bold) {
-                return (
-                  <strong key={index} className="font-semibold">
-                    {part.text}
-                  </strong>
-                );
-              }
-              return <span key={index}>{part.text}</span>;
-            })}
+            <div className="whitespace-pre-wrap break-words">
+              {parseNaviBold(m.content).map(function (part, index) {
+                if (part.bold) {
+                  return (
+                    <strong key={index} className="font-semibold">
+                      {part.text}
+                    </strong>
+                  );
+                }
+                return <span key={index}>{part.text}</span>;
+              })}
+            </div>
+            {m.role === "assistant" && naviMessageAction(m) === "open_profile" ? (
+              <Link
+                href={NAVI_PROFILE_HREF}
+                className="mt-3 inline-flex min-h-11 w-full max-w-full items-center justify-center rounded-2xl bg-accent px-4 text-sm font-semibold text-bg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
+              >
+                {t(locale, "navi.action.choose_tastes")}
+              </Link>
+            ) : null}
           </div>
         ))}
 

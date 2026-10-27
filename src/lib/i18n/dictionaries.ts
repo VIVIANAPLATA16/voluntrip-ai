@@ -108,6 +108,7 @@ const dictionaries = {
       "You don't have a Cultural DNA profile yet. Create one so I can use Qloo taste signals. Meanwhile, here are generic ideas — generic, not from Qloo.",
     "navi.experience.no_consent":
       "Cultural DNA consent is off, so I will not query Qloo. Enable consent on your cultural profile for personalized matches. Meanwhile, here are generic ideas — generic, not from Qloo.",
+    "navi.action.choose_tastes": "Choose my tastes",
     "navi.experience.qloo_unavailable":
       "Qloo is unavailable right now ({reason}). Here are generic ideas — generic, not from Qloo.",
     "navi.experience.qloo_demo":
@@ -613,6 +614,7 @@ const dictionaries = {
       "Aún no tienes un perfil de Cultural DNA. Créalo para que pueda usar señales de Qloo. Mientras tanto, aquí hay ideas genéricas — generic, not from Qloo.",
     "navi.experience.no_consent":
       "El consentimiento de Cultural DNA está desactivado, así que no consultaré Qloo. Actívalo en tu perfil cultural para recomendaciones personalizadas. Mientras tanto, aquí hay ideas genéricas — generic, not from Qloo.",
+    "navi.action.choose_tastes": "Elegir mis gustos",
     "navi.experience.qloo_unavailable":
       "Qloo no está disponible ahora ({reason}). Aquí hay ideas genéricas — generic, not from Qloo.",
     "navi.experience.qloo_demo":
@@ -1117,6 +1119,7 @@ const dictionaries = {
       "Você ainda não tem um perfil de Cultural DNA. Crie um para eu usar sinais do Qloo. Enquanto isso, aqui vão ideias genéricas — generic, not from Qloo.",
     "navi.experience.no_consent":
       "O consentimento de Cultural DNA está desligado, então não vou consultar o Qloo. Ative o consentimento no seu perfil cultural para combinações personalizadas. Enquanto isso, aqui vão ideias genéricas — generic, not from Qloo.",
+    "navi.action.choose_tastes": "Escolher meus gostos",
     "navi.experience.qloo_unavailable":
       "O Qloo está indisponível agora ({reason}). Aqui vão ideias genéricas — generic, not from Qloo.",
     "navi.experience.qloo_demo":

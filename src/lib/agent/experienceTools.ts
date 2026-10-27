@@ -223,6 +223,8 @@ export function explainRecommendation(
       missing: true,
       best: null,
       alternative: last?.alternative ?? null,
+      missingProfile: Boolean(last?.missingProfile),
+      missingConsent: Boolean(last?.missingConsent),
     });
   }
   return noMutation({
@@ -234,6 +236,8 @@ export function explainRecommendation(
     usedBaseline: last.usedBaseline,
     baselineLabel: last.baselineLabel,
     qlooSource: last.qlooSource,
+    missingProfile: Boolean(last.missingProfile),
+    missingConsent: Boolean(last.missingConsent),
   });
 }
 
@@ -243,7 +247,12 @@ export function findBetterOption(
 ): ToolResult {
   const last = ctx.lastRecommendation;
   if (!last) {
-    return noMutation({ missing: true, alternative: null });
+    return noMutation({
+      missing: true,
+      alternative: null,
+      missingProfile: false,
+      missingConsent: false,
+    });
   }
   return noMutation({
     missing: false,
@@ -251,6 +260,8 @@ export function findBetterOption(
     best: last.best,
     usedBaseline: last.usedBaseline,
     baselineLabel: last.baselineLabel,
+    missingProfile: Boolean(last.missingProfile),
+    missingConsent: Boolean(last.missingConsent),
   });
 }
 

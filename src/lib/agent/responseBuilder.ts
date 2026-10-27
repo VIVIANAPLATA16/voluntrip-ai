@@ -1,7 +1,12 @@
 import type { AgentMessage, AgentToolCall, PurchaseSimulation, Transaction } from "@/types";
 import { createId } from "@/lib/id";
 import { t, type Locale } from "@/lib/i18n/dictionaries";
-import type { NaviResponse } from "./types";
+import {
+  naviActionFromToolData,
+  withNaviMessageAction,
+  type NaviMessageAction,
+  type NaviResponse,
+} from "./types";
 import type { AgentContext, ToolName, ToolResult } from "./tools";
 import { makeToolCall } from "./tools";
 
@@ -46,14 +51,23 @@ export function buildNaviResponse(params: {
     }
   }
 
-  const assistantMsg: AgentMessage = {
-    id: createId(),
-    role: "assistant",
-    content: params.assistantContent,
-    timestamp: new Date().toISOString(),
-    toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-    locale: params.locale,
-  };
+  let action: NaviMessageAction | undefined;
+  for (const { name, result } of params.executedTools) {
+    if (!result.ok) continue;
+    action = naviActionFromToolData(name, result.data) ?? action;
+  }
+
+  const assistantMsg: AgentMessage = withNaviMessageAction(
+    {
+      id: createId(),
+      role: "assistant",
+      content: params.assistantContent,
+      timestamp: new Date().toISOString(),
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+      locale: params.locale,
+    },
+    action
+  );
 
   return {
     message: assistantMsg,
