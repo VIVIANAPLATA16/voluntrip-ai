@@ -16,7 +16,7 @@ import Link from "next/link";
 import { generateInsight } from "@/lib/ai/azureOpenAI";
 import type { AIInsight } from "@/types";
 import { WifiOff } from "lucide-react";
-import { CulturalDnaCard } from "@/components/culture/CulturalDnaCard";
+import { TasteSummaryCard } from "@/components/culture/TasteSummaryCard";
 import { TonightMatch } from "@/components/experiences/TonightMatch";
 import { StretchPlanCard } from "@/components/experiences/StretchPlanCard";
 
@@ -105,7 +105,7 @@ export function HomeDashboard() {
 
       <TonightMatch />
       <StretchPlanCard />
-      <CulturalDnaCard />
+      <TasteSummaryCard />
 
       <div className="rounded-card border border-border bg-surface/70 p-4">
         <TripProgress trip={trip} />
