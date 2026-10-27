@@ -10,6 +10,7 @@ import {
   Map,
   Sparkles,
   Target,
+  Users,
   Wallet,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -18,6 +19,7 @@ import { t, type Locale } from "@/lib/i18n/dictionaries";
 const links = [
   { href: "/app", icon: LayoutDashboard, key: "nav.dashboard" as const },
   { href: "/app/profile", icon: Heart, key: "nav.profile" as const },
+  { href: "/app/groups", icon: Users, key: "nav.groups" as const },
   { href: "/app/pockets", icon: Wallet, key: "nav.pockets" as const },
   { href: "/app/activity", icon: Compass, key: "nav.activity" as const },
   { href: "/app/trip", icon: Map, key: "nav.trip" as const },

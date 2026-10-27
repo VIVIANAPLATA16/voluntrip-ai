@@ -21,6 +21,7 @@ import {
 } from "@/components/culture/TasteSummaryCard";
 import { TonightMatch } from "@/components/experiences/TonightMatch";
 import { StretchPlanCard } from "@/components/experiences/StretchPlanCard";
+import { GroupsCard } from "@/components/groups/GroupsCard";
 
 /** Same turquoise disc Avatar uses at hue 168; 44px hit area. */
 const CIRCLE_CLASS_PARTS = [
@@ -145,6 +146,7 @@ export function HomeDashboard() {
 
       <TonightMatch />
       <StretchPlanCard />
+      <GroupsCard />
       <TasteSummaryCard />
 
       <div className="rounded-card border border-border bg-surface/70 p-4">
