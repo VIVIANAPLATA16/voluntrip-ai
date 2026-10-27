@@ -11,7 +11,21 @@ export {
   type GroupStatus,
   type SyncedGroupMember,
 } from "./types";
-export { groupOverlap } from "./overlap";
+export {
+  groupOverlap,
+  groupTagLabel,
+  groupTasteOverlap,
+  knownGroupTags,
+} from "./overlap";
+export {
+  createGroupFromUi,
+  groupErrorText,
+  groupSharePayload,
+  groupShareTags,
+  groupsGate,
+  joinGroupFromUi,
+  setGroupSharing,
+} from "./share";
 export {
   clearGroupSession,
   createSharedGroup,
