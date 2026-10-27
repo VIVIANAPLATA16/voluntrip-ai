@@ -5,7 +5,12 @@ import { t, type Locale } from "@/lib/i18n/dictionaries";
 import { naviQlooCite } from "./qlooVoice";
 import type { ToolResult } from "./tools";
 import { formatMyDayReply, type MyDayPlan } from "./myDayPlan";
-import type { ExperienceRecommendationPayload, NaviResponse } from "./types";
+import {
+  naviActionFromToolData,
+  withNaviMessageAction,
+  type ExperienceRecommendationPayload,
+  type NaviResponse,
+} from "./types";
 
 function estimatedCostLabel(locale: Locale, experience: Experience): string {
   return t(locale, "navi.experience.estimated_cost", {
@@ -176,10 +181,13 @@ export function applyStretchPlanToNaviResponse(
       return mutation.type !== "transaction";
     }),
     pendingTransaction: undefined,
-    message: {
-      ...response.message,
-      content: formatStretchPlanReply(locale, plan),
-    },
+    message: withNaviMessageAction(
+      {
+        ...response.message,
+        content: formatStretchPlanReply(locale, plan),
+      },
+      naviActionFromToolData("planStretch", plan)
+    ),
   };
 }
 
@@ -197,10 +205,13 @@ export function applyMyDayToNaviResponse(
     mutations: (response.mutations ?? []).filter(function (mutation) {
       return mutation.type !== "transaction";
     }),
-    message: {
-      ...response.message,
-      content: formatMyDayReply(locale, plan),
-    },
+    message: withNaviMessageAction(
+      {
+        ...response.message,
+        content: formatMyDayReply(locale, plan),
+      },
+      naviActionFromToolData("planMyDay", plan)
+    ),
   };
 }
 
