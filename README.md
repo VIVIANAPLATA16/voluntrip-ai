@@ -39,6 +39,20 @@ Voluntrip AI launched for volunteers. The same daily safe, protected pockets, an
 
 ---
 
+## Vision and business potential
+
+Voluntrip AI starts with volunteers and grows to every long-stay traveler on a fixed budget. Industry blogs estimate 40–45 million digital nomads in 2026 ([Nomada, 2026](https://nomada.tools/blog/state-of-digital-nomadism-2026)); published figures vary by source. Volunteer-stay networks such as Worldpackers and Workaway already connect travelers with hosts around the world, and every one of those travelers has a budget to protect.
+
+**Where we are going.** Voluntrip becomes the layer between a traveler's taste and their wallet. In any city Qloo covers, every recommendation answers two questions at once: can I afford it, and is it worth it for me?
+
+**Roadmap (planned, not built yet):**
+- A freemium PWA. Daily safe spend, protected pockets and NAVI stay free; an annual plan unlocks Stretch plans, group planning and saved city guides.
+- Distribution through volunteer-stay and digital-nomad communities.
+- Partnerships with host and hostel networks. Rankings will always come from Qloo taste signals, never from paid placement.
+- Live exchange rates and more cities.
+
+---
+
 ## What makes it Qloo-powered
 
 A generic LLM would invent place names and costs. This product does not. Places enter the app only through the Qloo client (`src/lib/qloo/`), via server routes `/api/qloo` and `/api/qloo/entities`. The key stays on the server.
@@ -63,6 +77,38 @@ After Insights returns, Voluntrip:
 That is why the product would not work the same without Qloo. Remove Insights and there is no honest Tonight, Compare, Stretch, or Plan for today list for an arbitrary city.
 
 Travel Buddy does **not** call Qloo. It only reads aliases and tagMap IDs that members already opted to share in the current group.
+
+---
+
+## Qloo ON vs OFF: a real example
+
+**Without your taste** is still Qloo (default city ranking), not an invented list and not an LLM.
+
+How to reproduce it:
+
+1. Load the Medellín or Singapore demo.
+2. Open Cultural DNA (`/app/profile`), turn **Consent** on, and pick two likes (salsa + live music, or street food + coffee).
+3. On the Tonight card, tap **Compare with and without your taste**.
+
+Observed on Oct 21, 2026. Qloo results can change over time; the comparison is live in the app.
+
+**Medellín**, signals salsa + live music:
+
+| Ranking | Places |
+| --- | --- |
+| Without your taste (Qloo default ranking) | Parque Norte, Parques del Río, Florida Parque Comercial |
+| With your taste | Son Havana Bar, DANCEFREE, Café Zorba |
+
+Result: **3 of 3 places changed**.
+
+**Singapore**, signals street food + coffee:
+
+| Ranking | Places |
+| --- | --- |
+| Without your taste (Qloo default ranking) | Starbucks Gardens by the Bay, Gardens by the Bay, Jewel Changi Airport |
+| With your taste | Hello Arigato, Tamako Meal, The Landing Point |
+
+Result: **3 of 3 places changed**.
 
 ---
 
