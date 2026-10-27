@@ -39,6 +39,12 @@ Voluntrip AI launched for volunteers. The same daily safe, protected pockets, an
 
 ---
 
+## Potential impact
+
+Industry blogs estimate **40–45 million** digital nomads in 2026 ([Nomada, 2026](https://nomada.tools/blog/state-of-digital-nomadism-2026)); published figures vary by source. In our review of travel budget apps and AI trip planners, we did not find one that combines taste, remaining money, protected money, and a purchase simulation before spending. Whether that gap is a product opportunity is a hypothesis, not validated.
+
+---
+
 ## What makes it Qloo-powered
 
 A generic LLM would invent place names and costs. This product does not. Places enter the app only through the Qloo client (`src/lib/qloo/`), via server routes `/api/qloo` and `/api/qloo/entities`. The key stays on the server.
@@ -63,6 +69,38 @@ After Insights returns, Voluntrip:
 That is why the product would not work the same without Qloo. Remove Insights and there is no honest Tonight, Compare, Stretch, or Plan for today list for an arbitrary city.
 
 Travel Buddy does **not** call Qloo. It only reads aliases and tagMap IDs that members already opted to share in the current group.
+
+---
+
+## Qloo ON vs OFF: a real example
+
+**Without your taste** is still Qloo (default city ranking), not an invented list and not an LLM.
+
+How to reproduce it:
+
+1. Load the Medellín or Singapore demo.
+2. Open Cultural DNA (`/app/profile`), turn **Consent** on, and pick two likes (salsa + live music, or street food + coffee).
+3. On the Tonight card, tap **Compare with and without your taste**.
+
+Observed on Oct 21, 2026. Qloo results can change over time; the comparison is live in the app.
+
+**Medellín**, signals salsa + live music:
+
+| Ranking | Places |
+| --- | --- |
+| Without your taste (Qloo default ranking) | Parque Norte, Parques del Río, Florida Parque Comercial |
+| With your taste | Son Havana Bar, DANCEFREE, Café Zorba |
+
+Result: **3 of 3 places changed**.
+
+**Singapore**, signals street food + coffee:
+
+| Ranking | Places |
+| --- | --- |
+| Without your taste (Qloo default ranking) | Starbucks Gardens by the Bay, Gardens by the Bay, Jewel Changi Airport |
+| With your taste | Hello Arigato, Tamako Meal, The Landing Point |
+
+Result: **3 of 3 places changed**.
 
 ---
 
