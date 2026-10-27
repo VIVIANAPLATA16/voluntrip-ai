@@ -4,7 +4,9 @@ import {
   TASTE_PROFILE_PATH,
   TASTE_PROFILE_SECTIONS,
   buildTasteSummary,
+  likesCountKey,
   lovedEntityNames,
+  tasteProfileAvatarProps,
 } from "./TasteSummaryCard";
 import { CulturalDnaCard } from "./CulturalDnaCard";
 import { LovedEntitiesField } from "./LovedEntitiesField";
@@ -73,5 +75,34 @@ describe("taste profile page", () => {
     expect(t("es", "profile.taste_title")).toBe("Perfil de gustos");
     expect(t("en", "profile.taste_title")).toBe("Taste profile");
     expect(t("pt", "profile.taste_title")).toBe("Perfil de gostos");
+  });
+});
+
+describe("taste profile avatar link", () => {
+  it("links to /app/profile with a localized aria-label", () => {
+    expect(tasteProfileAvatarProps("en")).toEqual({
+      href: "/app/profile",
+      "aria-label": "Taste profile",
+    });
+    expect(tasteProfileAvatarProps("es")["aria-label"]).toBe("Perfil de gustos");
+    expect(tasteProfileAvatarProps("pt")["aria-label"]).toBe("Perfil de gostos");
+    expect(tasteProfileAvatarProps("es").href).toBe(TASTE_PROFILE_PATH);
+  });
+});
+
+describe("taste like count copy", () => {
+  it("uses singular and plural keys in en, es, and pt, including zero", () => {
+    expect(likesCountKey(1)).toBe("taste.summary.likes_one");
+    expect(likesCountKey(0)).toBe("taste.summary.likes_other");
+    expect(likesCountKey(2)).toBe("taste.summary.likes_other");
+    expect(t("en", likesCountKey(1), { count: 1 })).toBe("1 like");
+    expect(t("en", likesCountKey(2), { count: 2 })).toBe("2 likes");
+    expect(t("en", likesCountKey(0), { count: 0 })).toBe("0 likes");
+    expect(t("es", likesCountKey(1), { count: 1 })).toBe("1 gusto");
+    expect(t("es", likesCountKey(2), { count: 2 })).toBe("2 gustos");
+    expect(t("es", likesCountKey(0), { count: 0 })).toBe("0 gustos");
+    expect(t("pt", likesCountKey(1), { count: 1 })).toBe("1 gosto");
+    expect(t("pt", likesCountKey(2), { count: 2 })).toBe("2 gostos");
+    expect(t("pt", likesCountKey(0), { count: 0 })).toBe("0 gostos");
   });
 });

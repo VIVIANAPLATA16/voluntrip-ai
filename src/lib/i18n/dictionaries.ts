@@ -261,7 +261,8 @@ const dictionaries = {
     "taste.summary.empty":
       "No Cultural DNA yet. Turn consent on and pick a like",
     "taste.summary.consent": "Consent: {status}",
-    "taste.summary.likes": "{count} likes",
+    "taste.summary.likes_one": "{count} like",
+    "taste.summary.likes_other": "{count} likes",
     "taste.summary.loves": "Loved: {names}",
     "tonight.title": "Tonight's match",
     "tonight.loading": "Finding a match…",
@@ -765,7 +766,8 @@ const dictionaries = {
     "taste.summary.empty":
       "Aún no hay Cultural DNA. Activa el consentimiento y elige un gusto",
     "taste.summary.consent": "Consentimiento: {status}",
-    "taste.summary.likes": "{count} gustos",
+    "taste.summary.likes_one": "{count} gusto",
+    "taste.summary.likes_other": "{count} gustos",
     "taste.summary.loves": "Amas: {names}",
     "tonight.title": "Recomendación de esta noche",
     "tonight.loading": "Buscando una recomendación…",
@@ -1268,7 +1270,8 @@ const dictionaries = {
     "taste.summary.empty":
       "Ainda não há Cultural DNA. Ative o consentimento e escolha um gosto",
     "taste.summary.consent": "Consentimento: {status}",
-    "taste.summary.likes": "{count} gostos",
+    "taste.summary.likes_one": "{count} gosto",
+    "taste.summary.likes_other": "{count} gostos",
     "taste.summary.loves": "Ama: {names}",
     "tonight.title": "Recomendação de hoje à noite",
     "tonight.loading": "Buscando uma recomendação…",
