@@ -22,6 +22,22 @@ import {
 import { TonightMatch } from "@/components/experiences/TonightMatch";
 import { StretchPlanCard } from "@/components/experiences/StretchPlanCard";
 
+/** Same turquoise disc Avatar uses at hue 168; 44px hit area. */
+const CIRCLE_CLASS_PARTS = [
+  "inline-flex",
+  "h-11",
+  "w-11",
+  "min-h-11",
+  "min-w-11",
+  "rounded-full",
+  "flex",
+  "items-center",
+  "justify-center",
+  "font-display",
+  "font-semibold",
+  "text-bg",
+] as const;
+
 /** Header Taste-profile control: centered heart, no initial, no corner badge. */
 export function tasteHeaderAvatar(locale: Locale) {
   const props = tasteProfileAvatarProps(locale);
@@ -31,6 +47,9 @@ export function tasteHeaderAvatar(locale: Locale) {
     initial: null,
     icon: "heart" as const,
     iconAriaHidden: true,
+    circleClassName: CIRCLE_CLASS_PARTS.join(" "),
+    circleBackground: `linear-gradient(135deg, hsl(${168} 70% 45%), hsl(${198} 60% 35%))`,
+    heartClassName: ["h-5", "w-5", "text-bg", "fill-current"].join(" "),
   };
 }
 
@@ -98,14 +117,10 @@ export function HomeDashboard() {
           <Link
             href={profileLink.href}
             aria-label={profileLink["aria-label"]}
-            className="inline-flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none"
+            className={`${profileLink.circleClassName} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-reduce:transition-none`}
+            style={{ background: profileLink.circleBackground }}
           >
-            <span
-              aria-hidden
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-accent/15"
-            >
-              <Heart className="h-5 w-5 text-accent fill-accent" aria-hidden />
-            </span>
+            <Heart className={profileLink.heartClassName} aria-hidden />
           </Link>
         </div>
       </header>
