@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { TASTE_PROFILE_PATH } from "@/components/culture/TasteSummaryCard";
+
+/** Empty Tonight CTA. Navigates only — never grants consent or queries Qloo. */
+export const TONIGHT_EMPTY_PROFILE_HREF = TASTE_PROFILE_PATH;
 import { Card } from "@/components/ui/Card";
 import { naviAgent } from "@/lib/agent/agent";
 import { executeToolAsync } from "@/lib/agent/experienceTools";
@@ -128,7 +133,16 @@ export function TonightMatch() {
           {state === "empty" && (
             <Card className="min-w-0 overflow-hidden">
               <p className="text-sm font-medium break-words">{t(locale, "tonight.empty")}</p>
+              <p className="mt-1 text-xs text-ink-muted break-words">
+                {t(locale, "tonight.empty_consent")}
+              </p>
               <p className="mt-1 text-xs text-ink-muted break-words">{t(locale, "tonight.empty_hint")}</p>
+              <Link
+                href={TASTE_PROFILE_PATH}
+                className="mt-3 inline-flex min-h-10 items-center justify-center rounded-xl bg-accent px-4 text-sm font-semibold text-bg touch-target break-words motion-reduce:transition-none"
+              >
+                {t(locale, "tonight.open_profile")}
+              </Link>
             </Card>
           )}
 
