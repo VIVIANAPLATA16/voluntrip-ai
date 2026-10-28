@@ -3,15 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Compass, Home, Map, Sparkles, Wallet } from "lucide-react";
-import { t, type Locale } from "@/lib/i18n/dictionaries";
+import { Home, Map, Sparkles, Users, Wallet } from "lucide-react";
+import { t, type Locale, type TranslationKey } from "@/lib/i18n/dictionaries";
 
-const tabs = [
-  { href: "/app", icon: Home, key: "nav.home" as const },
-  { href: "/app/pockets", icon: Wallet, key: "nav.pockets" as const },
-  { href: "/app/navi", icon: Sparkles, key: "nav.navi" as const, center: true },
-  { href: "/app/activity", icon: Compass, key: "nav.activity" as const },
-  { href: "/app/trip", icon: Map, key: "nav.trip" as const },
+/** Five tabs so the NAVI disc stays centered. Activity remains at /app/activity. */
+export const MOBILE_NAV_TABS: Array<{
+  href: string;
+  icon: typeof Home;
+  key: TranslationKey;
+  center?: boolean;
+}> = [
+  { href: "/app", icon: Home, key: "nav.home" },
+  { href: "/app/pockets", icon: Wallet, key: "nav.pockets" },
+  { href: "/app/navi", icon: Sparkles, key: "nav.navi", center: true },
+  { href: "/app/groups", icon: Users, key: "nav.groups" },
+  { href: "/app/trip", icon: Map, key: "nav.trip" },
 ];
 
 export function NavigationBar({ locale = "en" }: { locale?: Locale }) {
@@ -19,12 +25,12 @@ export function NavigationBar({ locale = "en" }: { locale?: Locale }) {
 
   return (
     <nav
-      aria-label="Main"
+      aria-label={t(locale, "nav.aria_main")}
       className="fixed bottom-0 inset-x-0 z-40 md:hidden border-t border-border bg-bg/90 backdrop-blur-xl"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <ul className="grid grid-cols-5 h-16 max-w-lg mx-auto px-1">
-        {tabs.map((tab) => {
+        {MOBILE_NAV_TABS.map((tab) => {
           const active =
             tab.href === "/app"
               ? pathname === "/app"
