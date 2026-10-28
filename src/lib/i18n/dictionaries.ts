@@ -65,6 +65,7 @@ const dictionaries = {
     "navi.quick.better": "Better?",
     "navi.quick.stretch": "Stretch",
     "navi.quick.myday": "Plan for today",
+    "navi.quick.buddy": "Buddy",
     "navi.quick_prompt.afford": "Can I afford a $200 tour?",
     "navi.quick_prompt.expense": "I spent 15 dollars on lunch.",
     "navi.quick_prompt.spend": "How much can I spend today?",
@@ -74,6 +75,7 @@ const dictionaries = {
     "navi.quick_prompt.better": "find me a better option",
     "navi.quick_prompt.stretch": "stretch my trip",
     "navi.quick_prompt.myday": "plan for today",
+    "navi.quick_prompt.buddy": "Find me a travel buddy",
     "navi.mock_limitation":
       "This question needs NAVI with real AI (configure Azure OpenAI) to answer accurately. In demo mode I can only help with budget, expenses, purchases, and protecting money.",
     "navi.buddy.no_group":
@@ -646,6 +648,7 @@ const dictionaries = {
     "navi.quick.better": "¿Otra?",
     "navi.quick.stretch": "Estirar",
     "navi.quick.myday": "Plan para hoy",
+    "navi.quick.buddy": "Compañero",
     "navi.quick_prompt.afford": "¿Puedo permitirme un tour de 200 dólares?",
     "navi.quick_prompt.expense": "Gasté 15 dólares en el almuerzo.",
     "navi.quick_prompt.spend": "¿Cuánto puedo gastar hoy?",
@@ -655,6 +658,7 @@ const dictionaries = {
     "navi.quick_prompt.better": "otra opción",
     "navi.quick_prompt.stretch": "armar plan que estira mi viaje",
     "navi.quick_prompt.myday": "plan para hoy",
+    "navi.quick_prompt.buddy": "Busca un compañero de viaje",
     "navi.mock_limitation":
       "Esta pregunta necesita conexión a NAVI con IA real (configura Azure OpenAI) para responderse con precisión. En modo demo solo puedo ayudarte con presupuesto, gastos, compras y proteger dinero.",
     "navi.buddy.no_group":
@@ -1226,6 +1230,7 @@ const dictionaries = {
     "navi.quick.better": "Outra?",
     "navi.quick.stretch": "Esticar",
     "navi.quick.myday": "Plano para hoje",
+    "navi.quick.buddy": "Parceiro",
     "navi.quick_prompt.afford": "Posso pagar um tour de 200 dólares?",
     "navi.quick_prompt.expense": "Gastei 15 dólares no almoço.",
     "navi.quick_prompt.spend": "Quanto posso gastar hoje?",
@@ -1235,6 +1240,7 @@ const dictionaries = {
     "navi.quick_prompt.better": "outra opção",
     "navi.quick_prompt.stretch": "planeje minhas noites e estique a viagem",
     "navi.quick_prompt.myday": "plano para hoje",
+    "navi.quick_prompt.buddy": "Encontre alguém para viajar comigo",
     "navi.mock_limitation":
       "Esta pergunta precisa de conexão ao NAVI com IA real (configure Azure OpenAI) para ser respondida com precisão. No modo demo só posso ajudar com orçamento, gastos, compras e proteger dinheiro.",
     "navi.buddy.no_group":

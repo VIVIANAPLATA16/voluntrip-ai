@@ -230,6 +230,15 @@ describe("NaviAgent travel buddy intercept", () => {
     expect(spanish.message.locale).toBe("es");
   });
 
+  it("routes the Travel Buddy chip prompt without calling Azure or Qloo", async () => {
+    process.env.NEXT_PUBLIC_MOCK_AI = "false";
+    const agent = new NaviAgent();
+    const result = await agent.ask(t("en", "navi.quick_prompt.buddy"), askCtx);
+    expect(findGroupTravelBuddies).toHaveBeenCalledOnce();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(result.message.content).toBe(t("en", "navi.buddy.no_group"));
+  });
+
   it("returns NAVI's connection error if the group search throws", async () => {
     process.env.NEXT_PUBLIC_MOCK_AI = "false";
     findGroupTravelBuddies.mockRejectedValue(new Error("IndexedDB blocked"));

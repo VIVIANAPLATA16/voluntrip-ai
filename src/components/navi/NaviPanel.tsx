@@ -33,6 +33,7 @@ const QUICK: Array<{ labelKey: TranslationKey; promptKey: TranslationKey }> = [
   { labelKey: "navi.quick.why", promptKey: "navi.quick_prompt.why" },
   { labelKey: "navi.quick.better", promptKey: "navi.quick_prompt.better" },
   { labelKey: "navi.quick.stretch", promptKey: "navi.quick_prompt.stretch" },
+  { labelKey: "navi.quick.buddy", promptKey: "navi.quick_prompt.buddy" },
   { labelKey: "navi.quick.afford", promptKey: "navi.quick_prompt.afford" },
   { labelKey: "navi.quick.expense", promptKey: "navi.quick_prompt.expense" },
   { labelKey: "navi.quick.spend", promptKey: "navi.quick_prompt.spend" },

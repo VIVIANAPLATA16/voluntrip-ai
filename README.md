@@ -152,7 +152,7 @@ Cultural tools:
 
 Local NAVI (default) uses templates plus those tools. Conversational Azure NAVI needs `NEXT_PUBLIC_MOCK_AI=false` and the Azure OpenAI variables. In both modes, money figures and place lists still come from tools — the model is not allowed to invent totals. Buddy answers come from the current group, not from Azure inventing people.
 
-The eight NAVI chips are Tonight, Plan for today, Why this?, Better?, Stretch, Afford?, Expense, and Budget?. There is no Travel Buddy chip; the feature is language-only.
+The nine NAVI chips are Tonight, Plan for today, Why this?, Better?, Stretch, Buddy, Afford?, Expense, and Budget?. Buddy sends the localized “Find me a travel buddy” phrasing through the same intercept as typing it — it does not call Qloo or Azure.
 
 ---
 

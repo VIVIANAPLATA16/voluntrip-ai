@@ -84,6 +84,24 @@ describe("detectLocalAskIntent travel buddy", () => {
     expect(pt).toEqual({ intent: "buddy", tools: [] });
   });
 
+  it("maps the localized NAVI chip prompts to buddy with no tools", () => {
+    expect(t("en", "navi.quick_prompt.buddy")).toBe("Find me a travel buddy");
+    expect(t("es", "navi.quick_prompt.buddy")).toBe("Busca un compañero de viaje");
+    expect(t("pt", "navi.quick_prompt.buddy")).toBe("Encontre alguém para viajar comigo");
+    expect(detectLocalAskIntent(t("en", "navi.quick_prompt.buddy"))).toEqual({
+      intent: "buddy",
+      tools: [],
+    });
+    expect(detectLocalAskIntent(t("es", "navi.quick_prompt.buddy"))).toEqual({
+      intent: "buddy",
+      tools: [],
+    });
+    expect(detectLocalAskIntent(t("pt", "navi.quick_prompt.buddy"))).toEqual({
+      intent: "buddy",
+      tools: [],
+    });
+  });
+
   it("does not treat place, budget, or expense requests as a travel buddy search", () => {
     expect(detectLocalAskIntent("find me a better option").intent).toBe("alternative");
     expect(detectLocalAskIntent("find me a better option").tools).toEqual(["findBetterOption"]);
