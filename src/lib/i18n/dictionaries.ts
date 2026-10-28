@@ -446,6 +446,13 @@ const dictionaries = {
     "home.see_all": "See all",
     "home.no_activity_yet": "No activity yet",
     "home.no_trip_yet": "No trip yet. Complete onboarding or load the demo.",
+    "demo.insight.singapore_title": "Singapore tonight",
+    "demo.insight.medellin_title": "Medellín tonight",
+    "demo.insight.chiang_title": "On track",
+    "demo.insight.body":
+      "You have ${available} real available and {days} days left. Ask NAVI what to do tonight.",
+    "demo.insight.chiang_body":
+      "Your host covers accommodation and breakfast — focus your free budget on lunch, dinner, and experiences.",
     "navi.tagline": "Your AI financial compass",
     "navi.empty_state_hint":
       "Ask anything about your trip money. Try voice or a quick action.",
@@ -707,16 +714,16 @@ const dictionaries = {
     "navi.azure_fallback":
       "Listo. ¿En qué más te ayudo con tu presupuesto?",
     "navi.experience.no_profile":
-      "Aún no tienes un perfil de Cultural DNA. Créalo para que pueda usar señales de Qloo. Mientras tanto, aquí hay ideas genéricas — generic, not from Qloo.",
+      "Aún no tienes un perfil de Cultural DNA. Créalo para que pueda usar señales de Qloo. Mientras tanto, aquí hay ideas genéricas — no vienen de Qloo.",
     "navi.experience.no_consent":
-      "El consentimiento de Cultural DNA está desactivado, así que no consultaré Qloo. Actívalo en tu perfil cultural para recomendaciones personalizadas. Mientras tanto, aquí hay ideas genéricas — generic, not from Qloo.",
+      "El consentimiento de Cultural DNA está desactivado, así que no consultaré Qloo. Actívalo en tu perfil cultural para recomendaciones personalizadas. Mientras tanto, aquí hay ideas genéricas — no vienen de Qloo.",
     "navi.action.choose_tastes": "Elegir mis gustos",
     "navi.experience.qloo_unavailable":
-      "Qloo no está disponible ahora ({reason}). Aquí hay ideas genéricas — generic, not from Qloo.",
+      "Qloo no está disponible ahora ({reason}). Aquí hay ideas genéricas — no vienen de Qloo.",
     "navi.experience.qloo_demo":
-      "Qloo está en modo demo (sin clave en vivo). Estas ideas son generic, not from Qloo.",
+      "Qloo está en modo demo (sin clave en vivo). Estas ideas son genéricas y no vienen de Qloo.",
     "navi.experience.recommend":
-      "Prueba {name}{place}.\nVoluntrip Value Score: {score}/100.",
+      "Prueba {name}{place}.\nPuntaje de valor Voluntrip: {score}/100.",
     "navi.experience.estimated_cost":
       "Costo estimado: {cost} por persona (estimado, no es un precio verificado).",
     "navi.experience.from_qloo":
@@ -775,7 +782,7 @@ const dictionaries = {
     "navi.myday.none_fit":
       "Ninguna parada de Qloo cabe en el daily safe de hoy ({daily}) en {city}. No inventaré una parada.",
     "navi.voice.not_qloo":
-      "{place} es genérico, not from Qloo ({source}).",
+      "{place} es genérico, no viene de Qloo ({source}).",
     "navi.experience.protected_yes": "sí",
     "navi.experience.protected_no": "no",
     "culture.title": "Cultural DNA",
@@ -976,7 +983,7 @@ const dictionaries = {
     "experience.cultural_fit": "Cultural",
     "experience.financial_fit": "Financiero",
     "experience.value_score": "Voluntrip",
-    "experience.value_score_detail": "Voluntrip Value Score: {score}/100",
+    "experience.value_score_detail": "Puntaje de valor Voluntrip: {score}/100",
     "experience.why_heading": "Por qué {name}:",
     "experience.from_qloo": "De Qloo",
     "experience.not_from_qloo": "No es de Qloo",
@@ -1029,6 +1036,13 @@ const dictionaries = {
     "home.see_all": "Ver todo",
     "home.no_activity_yet": "Sin actividad aún",
     "home.no_trip_yet": "Aún no hay viaje. Completa la configuración o carga la demo.",
+    "demo.insight.singapore_title": "Singapur esta noche",
+    "demo.insight.medellin_title": "Medellín esta noche",
+    "demo.insight.chiang_title": "En ritmo",
+    "demo.insight.body":
+      "Tienes ${available} de disponible real y {days} días por delante. Pregúntale a NAVI qué hacer esta noche.",
+    "demo.insight.chiang_body":
+      "Tu anfitrión cubre alojamiento y desayuno — usa el presupuesto libre en almuerzo, cena y planes.",
     "navi.tagline": "Tu brújula financiera con IA",
     "navi.empty_state_hint":
       "Pregunta lo que quieras sobre el dinero de tu viaje. Prueba voz o una acción rápida.",
@@ -1289,16 +1303,16 @@ const dictionaries = {
     "navi.azure_fallback":
       "Pronto. Em que mais posso ajudar com seu orçamento?",
     "navi.experience.no_profile":
-      "Você ainda não tem um perfil de Cultural DNA. Crie um para eu usar sinais do Qloo. Enquanto isso, aqui vão ideias genéricas — generic, not from Qloo.",
+      "Você ainda não tem um perfil de Cultural DNA. Crie um para eu usar sinais do Qloo. Enquanto isso, aqui vão ideias genéricas — não vêm do Qloo.",
     "navi.experience.no_consent":
-      "O consentimento de Cultural DNA está desligado, então não vou consultar o Qloo. Ative o consentimento no seu perfil cultural para combinações personalizadas. Enquanto isso, aqui vão ideias genéricas — generic, not from Qloo.",
+      "O consentimento de Cultural DNA está desligado, então não vou consultar o Qloo. Ative o consentimento no seu perfil cultural para combinações personalizadas. Enquanto isso, aqui vão ideias genéricas — não vêm do Qloo.",
     "navi.action.choose_tastes": "Escolher meus gostos",
     "navi.experience.qloo_unavailable":
-      "O Qloo está indisponível agora ({reason}). Aqui vão ideias genéricas — generic, not from Qloo.",
+      "O Qloo está indisponível agora ({reason}). Aqui vão ideias genéricas — não vêm do Qloo.",
     "navi.experience.qloo_demo":
-      "O Qloo está em modo demo (sem chave ao vivo). Estas ideias são generic, not from Qloo.",
+      "O Qloo está em modo demo (sem chave ao vivo). Estas ideias são genéricas e não vêm do Qloo.",
     "navi.experience.recommend":
-      "Experimente {name}{place}.\nVoluntrip Value Score: {score}/100.",
+      "Experimente {name}{place}.\nPontuação de valor Voluntrip: {score}/100.",
     "navi.experience.estimated_cost":
       "Custo estimado: {cost} por pessoa (estimativa, não é um preço verificado).",
     "navi.experience.from_qloo":
@@ -1357,7 +1371,7 @@ const dictionaries = {
     "navi.myday.none_fit":
       "Nenhuma parada do Qloo cabe no daily safe de hoje ({daily}) em {city}. Não vou inventar uma parada.",
     "navi.voice.not_qloo":
-      "{place} é genérico, not from Qloo ({source}).",
+      "{place} é genérico, não vem do Qloo ({source}).",
     "navi.experience.protected_yes": "sim",
     "navi.experience.protected_no": "não",
     "culture.title": "Cultural DNA",
@@ -1558,7 +1572,7 @@ const dictionaries = {
     "experience.cultural_fit": "Cultural",
     "experience.financial_fit": "Financeiro",
     "experience.value_score": "Voluntrip",
-    "experience.value_score_detail": "Voluntrip Value Score: {score}/100",
+    "experience.value_score_detail": "Pontuação de valor Voluntrip: {score}/100",
     "experience.why_heading": "Por que {name}:",
     "experience.from_qloo": "Do Qloo",
     "experience.from_voluntrip": "Do Voluntrip",
@@ -1611,6 +1625,13 @@ const dictionaries = {
     "home.see_all": "Ver tudo",
     "home.no_activity_yet": "Sem atividade ainda",
     "home.no_trip_yet": "Ainda não há viagem. Conclua a configuração ou carregue a demo.",
+    "demo.insight.singapore_title": "Singapura esta noite",
+    "demo.insight.medellin_title": "Medellín esta noite",
+    "demo.insight.chiang_title": "No ritmo",
+    "demo.insight.body":
+      "Você tem ${available} de disponível real e {days} dias pela frente. Pergunte ao NAVI o que fazer esta noite.",
+    "demo.insight.chiang_body":
+      "Seu anfitrião cobre hospedagem e café da manhã — use o orçamento livre em almoço, jantar e programas.",
     "navi.tagline": "Sua bússola financeira com IA",
     "navi.empty_state_hint":
       "Pergunte o que quiser sobre o dinheiro da viagem. Tente voz ou uma ação rápida.",

@@ -22,6 +22,7 @@ import {
 import { TonightMatch } from "@/components/experiences/TonightMatch";
 import { StretchPlanCard } from "@/components/experiences/StretchPlanCard";
 import { GroupsCard } from "@/components/groups/GroupsCard";
+import { localizedDemoInsight } from "@/lib/demo/insightCopy";
 
 /** Same turquoise disc Avatar uses at hue 168; 44px hit area. */
 const CIRCLE_CLASS_PARTS = [
@@ -100,6 +101,14 @@ export function HomeDashboard() {
   if (!trip || !snapshot || !runway) return null;
 
   const displayInsight = liveInsight || insights[0];
+  const insight = displayInsight
+    ? localizedDemoInsight(
+        displayInsight,
+        locale,
+        snapshot.realAvailable,
+        snapshot.daysRemaining
+      )
+    : null;
   const profileLink = tasteHeaderAvatar(locale);
 
   return (
@@ -155,7 +164,7 @@ export function HomeDashboard() {
 
       <MoneyRunwayCard runway={runway} />
 
-      {displayInsight && <InsightCard insight={displayInsight} />}
+      {insight && <InsightCard insight={insight} />}
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">

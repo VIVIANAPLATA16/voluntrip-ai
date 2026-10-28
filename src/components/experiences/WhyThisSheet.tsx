@@ -7,7 +7,7 @@ import { spendingStatusLabel } from "@/lib/i18n/labels";
 import { formatExperiencePlaceLabel } from "@/lib/agent/purchaseLabel";
 import { whyThisDetails } from "@/lib/experiences/whyThisDetails";
 import { t } from "@/lib/i18n/dictionaries";
-import { GENERIC_BASELINE_LABEL, type Experience } from "@/lib/experiences";
+import type { Experience } from "@/lib/experiences";
 import { useAppStore } from "@/store/appStore";
 import { ExperienceCard } from "./ExperienceCard";
 
@@ -34,7 +34,7 @@ export function WhyThisSheet({
   const details = whyThisDetails(experience, usedBaseline);
   const evidence = details.evidence;
   const sourceLabel = usedBaseline
-    ? `${evidence.source} (${GENERIC_BASELINE_LABEL})`
+    ? `${evidence.source} (${t(locale, "experience.generic_not_qloo")})`
     : evidence.source;
 
   return (
