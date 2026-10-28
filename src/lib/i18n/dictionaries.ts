@@ -731,11 +731,11 @@ const dictionaries = {
     "navi.experience.from_qloo":
       "From Qloo\nEtiquetas coincidentes: {tags}\nPuesto: {rank}\nFuente: {source}",
     "navi.experience.from_voluntrip":
-      "From Voluntrip\nCosto estimado: {cost} por persona (estimado, no es un precio verificado).\nGasto diario seguro: {dailyBefore} → {dailyAfter}.\nDinero protegido intacto: {protected}.\nRunway: {runway}.",
+      "De Voluntrip\nCosto estimado: {cost} por persona (estimado, no es un precio verificado).\nGasto diario seguro: {dailyBefore} → {dailyAfter}.\nDinero protegido intacto: {protected}.\nAutonomía: {runway}.",
     "navi.experience.alternative":
       "Alternativa más barata con buen encaje cultural: {name} (estimado {cost} por persona).",
     "navi.experience.no_alternative":
-      "No tengo una alternativa más barata con culturalFit de 60 o más.",
+      "No tengo una alternativa más barata con encaje cultural de 60 o más.",
     "navi.experience.simulate_hint":
       "Si quieres ir, puedo simular este costo estimado primero. No se registra nada hasta que Confirmes.",
     "navi.experience.no_last":
@@ -1322,11 +1322,11 @@ const dictionaries = {
     "navi.experience.from_qloo":
       "From Qloo\nTags correspondentes: {tags}\nPosição: {rank}\nFonte: {source}",
     "navi.experience.from_voluntrip":
-      "From Voluntrip\nCusto estimado: {cost} por pessoa (estimativa, não é um preço verificado).\nGasto diário seguro: {dailyBefore} → {dailyAfter}.\nDinheiro protegido intacto: {protected}.\nRunway: {runway}.",
+      "Do Voluntrip\nCusto estimado: {cost} por pessoa (estimativa, não é um preço verificado).\nGasto diário seguro: {dailyBefore} → {dailyAfter}.\nDinheiro protegido intacto: {protected}.\nAutonomia: {runway}.",
     "navi.experience.alternative":
       "Alternativa mais barata com bom encaixe cultural: {name} (estimado {cost} por pessoa).",
     "navi.experience.no_alternative":
-      "Não tenho uma alternativa mais barata com culturalFit de 60 ou mais.",
+      "Não tenho uma alternativa mais barata com encaixe cultural de 60 ou mais.",
     "navi.experience.simulate_hint":
       "Se quiser ir, posso simular este custo estimado primeiro. Nada é registrado até você Confirmar.",
     "navi.experience.no_last":

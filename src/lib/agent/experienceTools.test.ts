@@ -139,7 +139,7 @@ describe("NAVI experience tools", () => {
       })
     );
     expect(searchPlaces).not.toHaveBeenCalled();
-    expect(noConsent.message.content).toMatch(/generic, not from Qloo/);
+    expect(noConsent.message.content).toMatch(/no vienen de Qloo|no viene de Qloo/);
     expect(noConsent.experienceRecommendation?.qlooSource).toBe("skipped");
 
     searchPlaces.mockClear();
