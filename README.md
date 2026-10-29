@@ -273,7 +273,7 @@ npm run test:watch
 npm run check:i18n
 ```
 
-**318 tests passed** on this revision (`vitest run`, 38 files), including Qloo request shaping, Insights/Entity Search normalization, consent, ranking, Compare, Stretch, NAVI Tonight / Why this? / Plan for today, finance, Groups share/privacy/overlap, Travel Buddy states, and the NAVI buddy intercept (mock and Azure-flag paths, without calling live Azure).
+**326 tests passed** on this revision (`vitest run`, 41 files), including Qloo request shaping, Insights/Entity Search normalization, consent, ranking, Compare, Stretch, NAVI Tonight / Why this? / Plan for today, finance, Groups share/privacy/overlap, Travel Buddy states, and the NAVI buddy intercept (mock and Azure-flag paths, without calling live Azure).
 
 `npm run check:i18n` currently reports **0 warnings** and exits 0. The script exits 1 if it finds leftover English UI. It is not part of `npm test` or `npm run build`.
 
